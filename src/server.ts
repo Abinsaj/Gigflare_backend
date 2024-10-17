@@ -9,8 +9,7 @@ import userRouter from './Routes/userRoutes';
 import adminRouter from './Routes/adminRoutes';
 import freelancerRouter from './Routes/freelancerRoutes'
 
-dotenv.config();
-
+dotenv.config()
 const PORT = process.env.PORT;
 
 ConnectDB();
