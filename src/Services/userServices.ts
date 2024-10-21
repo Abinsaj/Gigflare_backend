@@ -74,7 +74,7 @@ export class UserService {
 
 
     login = async (email: string, password: string): Promise<{
-        userInfo: { name: string, email: string, phone: string, userId: string, isBlocked: boolean },
+        userInfo: { name: string, email: string, phone: string, userId: string, isBlocked: boolean, created_At: string,  isFreelancer: boolean },
         accessToken: string,
         refreshToken: string
     } | null> => {
@@ -94,13 +94,14 @@ export class UserService {
             if(!compare){
                 throw {message:'Incorrect password'}
             }
-
             const userInfo = {
                 userId: userExist.userId,
                 name: userExist.name,
                 email: userExist.email,
                 phone: userExist.phone,
-                isBlocked: userExist.isBlocked
+                isBlocked: userExist.isBlocked,
+                created_At: userExist.created_At.toISOString().slice(0, 10),
+                isFreelancer: userExist.isFreelancer
             }
 
             const accessToken = createToken(userExist.userId, "user");

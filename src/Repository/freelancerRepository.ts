@@ -5,12 +5,13 @@ import userModel from "../Models/userSchema";
 export class FreelancerRepository {
   static async saveApplication(data: any): Promise<IFreelancer> {
     try {      
-      const user = await userModel.findOne({ email: data.email });
+      console.log(data)
+      const user = await userModel.findOne({ userId: data.userId });
       if (!user) {
         throw new Error('User not found');
       }
 
-      const isApplicatinExist = await FreelancerApplication.findOne({email:data.email})
+      const isApplicatinExist = await FreelancerApplication.findOne({userId: data.userId})
       if(isApplicatinExist){
         throw new Error('You have already applied for freelancer')
       }

@@ -13,6 +13,8 @@ export class FreelancerController {
 
         try {
             console.log('its herererer')
+            const {userId} = req.params
+            console.log(userId, 'we got the user id here')
             const files = (req as any).files as {
                 [fieldname: string]: Express.Multer.File[]
             }
@@ -42,7 +44,7 @@ export class FreelancerController {
                 return cert;
             });
 
-            await this.freelancerService.freelancerApplicationService(files, data);
+            await this.freelancerService.freelancerApplicationService(files, data, userId);
             res.status(HTTP_statusCode.OK).json({successs:true, message: 'Applicaiton submitted successfully'})
         } catch (error: any) {
             console.error("Error in tutor application controller:", error);

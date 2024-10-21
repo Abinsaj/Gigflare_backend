@@ -48,18 +48,19 @@ export class UserController {
                 return res.status(HTTP_statusCode.Unauthorized).json({success:false, message: "Invalid login credentials" })
             }
 
-            res.cookie('AccessToken', result.accessToken, {
+            res.cookie('AccessToken', result.accessToken,{
                 httpOnly: true,
-                sameSite: "strict",
-                maxAge: 15 * 60 * 1000,
+                sameSite:'none',
+                secure: true,
+                maxAge: 60 * 1000,
             });
 
             res.cookie('RefreshToken', result.refreshToken, {
                 httpOnly: true,
-                sameSite: 'strict',
+                sameSite:'none',
+                secure: true,
                 maxAge: 7 * 24 * 60 * 60 * 10000
             })
-
             const { userInfo } = result;
             const cred = { userInfo };
             res.status(HTTP_statusCode.OK).json({success: true, message: 'Login successful', cred });

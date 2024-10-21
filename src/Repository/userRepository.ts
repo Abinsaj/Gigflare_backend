@@ -34,6 +34,8 @@ export class UserRepository {
                     password: 1,
                     phone: 1,
                     isBlocked: 1,
+                    created_At: 1,
+                    isFreelancer: 1
                 }
             )
             return user

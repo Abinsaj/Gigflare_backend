@@ -28,7 +28,7 @@ const handleMulterError = (err: any, req:any, res:any, next:any) => {
   next(err);
 };
 
-router.post('/application',flexibleUpload,handleMulterError,freelancerController.verifyApplication
+router.post('/application/:userId',flexibleUpload,handleMulterError,freelancerController.verifyApplication
 );
 
 export default router;

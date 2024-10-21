@@ -1,8 +1,9 @@
-import { createToken } from "../Config/jwtConfig";
+import { createRefreshToken, createToken } from "../Config/jwtConfig";
 import FreelancerApplication from "../Models/applicationForm";
-import userModel from "../Models/userSchema";
 import { FreelancerRepository } from "../Repository/freelancerRepository";
 import { UserRepository } from "../Repository/userRepository";
+import { AdminRepository } from "../Repository/adminRepository";
+
 
 require('dotenv').config()
 
@@ -21,8 +22,8 @@ export class AdminService{
                 email
             }
             const accessToken = createToken(email as string, 'Admin')
-            console.log(accessToken)
-            return adminInfo
+            const refreshToken = createRefreshToken(email as string, "Admin")
+            return {accessToken,adminInfo,refreshToken}
         } catch (error: any) {
             throw new Error(error.message)
         }
@@ -102,6 +103,29 @@ export class AdminService{
             }
         } catch (error) {
             throw new Error
+        }
+    }
+
+    createCategoryService = async(name:string, description: string)=>{
+        try {
+            
+            const createCategory = await AdminRepository.createCatregory(name,description)
+            if(createCategory){
+                return true
+            }else{
+                throw new Error('Failed to add category')
+            }
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    getCategoryService = async()=>{
+        try {
+            const categories = await AdminRepository.getCategories()
+            return categories
+        } catch (error: any) {
+            throw new Error(error.message)
         }
     }
 }

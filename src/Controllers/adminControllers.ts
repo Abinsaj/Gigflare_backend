@@ -10,11 +10,25 @@ export class AdminController{
 
     verifyAdmin = async(req: Request, res: Response)=>{
         try {
-            console.log('its here')
             const {email, password} = req.body
-            console.log(email,password)
             const data = await this.adminService.verifyAdmin(email, password)
-            res.status(HTTP_statusCode.OK).json({message: 'Admin login succesful',data})
+            res.cookie('AdminAccessToken',data.accessToken,{
+                httpOnly: true,
+                sameSite:'none',
+                secure: true,
+                maxAge: 60 * 1000,
+            })
+
+            res.cookie('AdminRefreshToken',data.refreshToken,{
+                httpOnly: true,
+                sameSite: 'none',
+                secure: true,
+                maxAge: 7 * 24 * 60 * 60 * 10000
+            })
+
+            const {adminInfo} = data
+            const cred = adminInfo.email
+            res.status(HTTP_statusCode.OK).json({message: 'Admin login succesful',cred})
 
         } catch (error: any) {
             res.status(HTTP_statusCode.InternalServerError).json({message: error.message})
@@ -24,6 +38,7 @@ export class AdminController{
     getUsers = async(req: Request, res: Response) =>{
         try {
             const users = await this.adminService.getUsersListService()
+            res.clearCookie('AccessToken')
             res.status(HTTP_statusCode.OK).json(users)
         } catch (error: any) {
             res.status(HTTP_statusCode.BadRequest).json(error.message)
@@ -45,9 +60,6 @@ export class AdminController{
 
     updateFreelancerStatus = async(req: Request, res: Response)=>{
         try {
-            console.log('its here')
-            console.log(req.params)
-            console.log(req.body)
             const {applicationId }= req.params
             const {status} = req.body
            
@@ -78,9 +90,43 @@ export class AdminController{
             const {isBlocked} = req.body
 
             await this.adminService.blockUserService(email,isBlocked)
-            res.status(HTTP_statusCode.OK).json('user blocked')
+            res.status(HTTP_statusCode.OK).json({success:true,message:'user blocked'})
         } catch (error: any) {
-            res.status(HTTP_statusCode.BadRequest).json(error.message)
+            res.status(HTTP_statusCode.BadRequest).json({success:false,message:error.message})
+        }
+    }
+    
+    adminLogout = async(req: Request, res: Response)=>{
+        try {
+            res.clearCookie('AdminAccessToken')
+            res.status(HTTP_statusCode.OK).json({success: true,message: 'Admin logout'})
+        } catch (error: any) {
+            console.log(error.message)
+            res.status(HTTP_statusCode.InternalServerError).json({success: false,message:'Failed to delete Admin'})
+        }
+    }
+
+    createCategory = async(req: Request, res: Response)=>{
+        try {
+
+            const {data} = req.body
+            await this.adminService.createCategoryService(data.name, data.description)
+            res.status(HTTP_statusCode.OK).json({success: true, message:'Category successfuly added'})
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json({success:false, message:error.message})
+        }
+    }
+
+    getCategories = async(req: Request,res: Response)=>{
+        try {
+            const data = await this.adminService.getCategoryService()
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, message:'Data fetched successfully',data})
+            }else{
+                res.status(HTTP_statusCode.TaskFailed).json({success: false, message:'Failed to fetch data'})
+            }
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json({success: false, message:error.message})
         }
     }
 }

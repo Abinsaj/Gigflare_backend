@@ -132,6 +132,6 @@ const freelancerSchema = new Schema<IFreelancer>({
     timestamps: true
 });
 
-const FreelancerApplication = model<IFreelancer>('Freelancer', freelancerSchema);
+const FreelancerApplication = model<IFreelancer>('Application', freelancerSchema);
 
 export default FreelancerApplication;

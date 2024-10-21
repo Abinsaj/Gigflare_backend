@@ -10,7 +10,7 @@ export class FreelancerService{
 
     private awsConfig = new AwsConfig()
 
-    freelancerApplicationService = async(files: any, data: any ): Promise<void>=>{
+    freelancerApplicationService = async(files: any, data: any ,userId: string): Promise<void>=>{
         try {
             const bucketName = process.env.BUCKET_NAME
 
@@ -35,6 +35,7 @@ export class FreelancerService{
 
             const applicationId = uuidv4()
             const wholeData = {
+                userId,
                 applicationId,
                 ...data,
                 files:fileUrls

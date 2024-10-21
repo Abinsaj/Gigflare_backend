@@ -18,17 +18,19 @@ const app : Application = express();
 const server = createServer(app);
 
 app.use(morgan('dev'));
+app.use(cookieParser())
 
 const corsOptions = {
     origin: 'http://localhost:3000',
-    Credential: true,
+    credentials: true,
 }
+app.use(cors(corsOptions));
 
-app.use(cookieParser())
+
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
-app.use(cookieParser());
-app.use(cors(corsOptions));
+
+
 app.use('/',userRouter);
 app.use('/admin',adminRouter);
 app.use('/freelancer', freelancerRouter);

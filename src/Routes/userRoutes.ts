@@ -2,6 +2,7 @@ import { Router } from "express";
 import { UserController } from "../Controllers/userController";
 import { UserService } from "../Services/userServices";
 
+
 const router = Router()
 
 const userServive = new UserService();
