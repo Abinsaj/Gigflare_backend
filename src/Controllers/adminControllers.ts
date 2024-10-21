@@ -129,6 +129,19 @@ export class AdminController{
             res.status(HTTP_statusCode.InternalServerError).json({success: false, message:error.message})
         }
     }
+
+    blockunblockCategory = async(req: Request, res: Response)=>{
+        try {
+            console.log("the data reached the controller")
+            const {categoryName} = req.params
+            const {status} = req.body
+            console.log(status)
+            await this.adminService.blockUnblockCategoryService(categoryName,status)
+            res.status(HTTP_statusCode.OK).json({success: true, message:'category blocked'})
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json({success: false, message:error.message})
+        }
+    }
 }
 
 

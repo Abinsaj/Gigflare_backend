@@ -2,7 +2,8 @@ import mongoose,{ model, Document, Schema } from "mongoose";
 
 export interface ICategory extends Document{
     name: string,
-    description: string
+    description: string,
+    isBlocked: boolean
 }
 
 const categorySchema = new Schema<ICategory>({
@@ -14,6 +15,10 @@ const categorySchema = new Schema<ICategory>({
         type: String,
         required: true
     },
+    isBlocked:{
+        type: Boolean,
+        default: false
+    }
 },{
     timestamps: true
 });

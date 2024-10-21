@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid"
 import sendOTPMail from "../Config/emailConfig"
 import { createRefreshToken, createToken } from "../Config/jwtConfig"
 import AppError from "../utils/AppError"
+import { IJob } from "../Models/jobSchema"
 
 export class UserService {
     private userData: IUser | null = null
@@ -208,6 +209,29 @@ export class UserService {
             return user
         } catch (error: any) {
             throw { statusCode: error.statusCode || 500, message: error.message || 'Internal server Error'}
+        }
+    }
+
+    createJobService = async(data: any)=>{
+        try {
+            const jobInfo = {
+                title: data.jobTitle,
+                description: data.jobDescription,
+                skillsRequired: data.skills,
+                budget: data.budget,
+                category: data.category,
+                deadLine: data.deadline,
+                language: data.language
+            }
+            const create = await UserRepository.createJob(jobInfo)
+            
+            if(create){
+                return true
+            }else{
+                return false
+            }
+        } catch (error: any) {
+            throw new Error(error.message)
         }
     }
 }

@@ -1,5 +1,5 @@
 import { createRefreshToken, createToken } from "../Config/jwtConfig";
-import FreelancerApplication from "../Models/applicationForm";
+import FreelancerApplication from "../Models/applicationSchema";
 import { FreelancerRepository } from "../Repository/freelancerRepository";
 import { UserRepository } from "../Repository/userRepository";
 import { AdminRepository } from "../Repository/adminRepository";
@@ -124,6 +124,26 @@ export class AdminService{
         try {
             const categories = await AdminRepository.getCategories()
             return categories
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    blockUnblockCategoryService = async(name: string, status: string)=>{
+        try {
+            console.log("the data reached service",status)
+            let newStatus 
+            if(status == "block"){
+                newStatus = true
+            }else if(status == "unblock"){
+                newStatus = false
+            }
+            const blockData = await AdminRepository.blockUnblockCategory(name, newStatus)
+            if(blockData){
+                return true
+            }else{
+                throw new Error('Failed to change the status')
+            }
         } catch (error: any) {
             throw new Error(error.message)
         }

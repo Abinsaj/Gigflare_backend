@@ -138,4 +138,20 @@ export class UserController {
             res.status(error.statusCode || 500).json({success: false, message: error.message || 'An error occured'})
         }
     }
+
+    createJob = async(req:Request, res:Response)=>{
+        try {
+            console.log(req.body,'this is the body data')
+            const data = req.body.values
+            console.log(data,' this is the data we got')
+            const created = await this.userService.createJobService(data)
+            if(created){
+                res.status(HTTP_statusCode.OK).json({success:true,message:'Job created successfully'})
+            }else{
+                res.status(HTTP_statusCode.BadRequest).json({success:false,message:'Failed to create job'})
+            }
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json({success: false,message:error.message})
+        }
+    }
 }

@@ -1,4 +1,4 @@
-import FreelancerApplication, { IFreelancer } from "../Models/applicationForm";
+import FreelancerApplication, { IFreelancer } from "../Models/applicationSchema";
 import userModel from "../Models/userSchema";
 
 

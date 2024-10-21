@@ -16,5 +16,6 @@ router.put('/blockUser/:email',adminController.blockUser)
 router.post('/adminlogout',adminController.adminLogout)
 router.post('/category',adminController.createCategory)
 router.get('/getcategories',adminController.getCategories)
+router.put('/blockcategory/:categoryName',adminController.blockunblockCategory)
 
 export default router

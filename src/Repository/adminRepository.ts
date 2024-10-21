@@ -33,4 +33,23 @@ export class AdminRepository{
             throw  new Error(error.message)
         }
     }
+
+    static async blockUnblockCategory(name: string, status: boolean | undefined){
+        try {
+            console.log('the data has reached here',status)
+            const data = await CategorySchema.findOneAndUpdate(
+                {name},
+                {
+                    $set:{isBlocked: status}
+                },
+                {new: true}
+            );
+            if(!data){
+                throw new Error('category not found')
+            }
+            return true
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
 }

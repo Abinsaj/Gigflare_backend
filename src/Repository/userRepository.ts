@@ -1,4 +1,5 @@
 import { IUser } from "../Interfaces/common.interface";
+import jobModel, { IJob } from "../Models/jobSchema";
 import userModel from "../Models/userSchema";
 import bcrypt from 'bcrypt'
 
@@ -126,8 +127,17 @@ export class UserRepository {
                 await user.save()
                 return true
             }
-        } catch (error) {
-            
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    static async createJob(data: any){
+        try {
+            const newJob = new jobModel(data)
+            return await newJob.save()
+        } catch (error:any) {
+            throw new Error(error.message)
         }
     }
 }

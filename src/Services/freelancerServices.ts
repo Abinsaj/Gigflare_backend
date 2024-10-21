@@ -1,5 +1,5 @@
 import { AwsConfig } from "../Config/awsFileConfig"
-import { IFreelancer } from "../Models/applicationForm"
+import { IFreelancer } from "../Models/applicationSchema"
 import { v4 as uuidv4 } from "uuid";
 import { FreelancerRepository } from "../Repository/freelancerRepository";
 
