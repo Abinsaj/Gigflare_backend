@@ -85,7 +85,6 @@ export class AdminController{
 
     blockUser = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body)
             const {email} = req.params;
             const {isBlocked} = req.body
 
@@ -132,10 +131,8 @@ export class AdminController{
 
     blockunblockCategory = async(req: Request, res: Response)=>{
         try {
-            console.log("the data reached the controller")
             const {categoryName} = req.params
             const {status} = req.body
-            console.log(status)
             await this.adminService.blockUnblockCategoryService(categoryName,status)
             res.status(HTTP_statusCode.OK).json({success: true, message:'category blocked'})
         } catch (error: any) {

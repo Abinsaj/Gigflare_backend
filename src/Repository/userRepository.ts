@@ -24,7 +24,6 @@ export class UserRepository {
     }
     static async verifyLogin(email: string, password: string): Promise<any>{
         try {
-            console.log('Ithu ivida ethikku too')
             const user = await userModel.findOne(
                 {email},
                 {
@@ -59,7 +58,6 @@ export class UserRepository {
                     isBlocked: 1,
                 }
             )
-            console.log(users)
             return users
         } catch (error) {
             throw new Error('failed to fetch users list from the db')
@@ -68,7 +66,6 @@ export class UserRepository {
 
     static async verifyEmail(email: string){
         try {
-            console.log('Hi ivida inda ')
             const user = await userModel.findOne({email})
 
             if(!user){
@@ -105,7 +102,6 @@ export class UserRepository {
                 throw new Error('no user have found')
             }else{
                 user.isBlocked = isBlocked;
-                console.log('the blocked freelancer is',user)
                 await user.save()
                 return true
             }
@@ -118,12 +114,10 @@ export class UserRepository {
     static async blockUser(email: string, isBlocked: boolean){
         try {
             const user = await userModel.findOne({email})
-            console.log(user)
             if(!user){
                 throw new Error('no user have found')
             }else{
                 user.isBlocked = isBlocked;
-                console.log('the blocked freelancer is',user)
                 await user.save()
                 return true
             }
@@ -137,6 +131,19 @@ export class UserRepository {
             const newJob = new jobModel(data)
             return await newJob.save()
         } catch (error:any) {
+            throw new Error(error.message)
+        }
+    }
+
+    static async addAddress(data: any, id: string){
+        try {
+            const user = await userModel.findOneAndUpdate({userId:id},
+                {$push: {
+                    address: data
+                }}
+            )
+            return user
+        } catch (error: any) {
             throw new Error(error.message)
         }
     }

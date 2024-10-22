@@ -16,5 +16,6 @@ router.post ('/forgotEmail',userController.verifyEmail)
 router.post('/verifyforgototp',userController.verifyForgotOtp)
 router.post('/changepassword',userController.changePassword)
 router.post('/createjob',userController.createJob)
+router.post('/addAddress/:id',userController.addAddress)
 
 export default router;

@@ -1,5 +1,14 @@
 import mongoose,{Schema, model, Document} from "mongoose";
 
+export interface address{
+    address: string
+    country:  string
+    state: string
+    city: string
+    pincode: string
+}
+
+
 export interface IUser extends Document{
     userId:string,
     name:string,
@@ -14,6 +23,7 @@ export interface IUser extends Document{
         uniqueID?:String,
     },
     profile?:string
+    address?:address[]
 }
 
 const userSchema = new Schema<IUser>({
@@ -60,7 +70,24 @@ const userSchema = new Schema<IUser>({
     },
     profile:{
         type:String,
-    }
+    },
+    address:[{
+        address:{
+            type: String
+        },
+        country:{
+            type: String
+        },
+        state:{
+            type: String
+        },
+        city:{
+            type: String
+        },
+        pincode:{
+            type: String
+        },
+    }]
 });
 
 userSchema.index(

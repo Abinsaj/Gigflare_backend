@@ -6,6 +6,7 @@ import sendOTPMail from "../Config/emailConfig"
 import { createRefreshToken, createToken } from "../Config/jwtConfig"
 import AppError from "../utils/AppError"
 import { IJob } from "../Models/jobSchema"
+import { address } from "../Models/userSchema"
 
 export class UserService {
     private userData: IUser | null = null
@@ -80,9 +81,7 @@ export class UserService {
         refreshToken: string
     } | null> => {
         try {
-            console.log(password,'this is the user password')
             const userExist = await UserRepository.verifyLogin(email, password)
-            console.log('the user data we got is ', userExist)
             if (!userExist) {
                 throw {message: 'Invalid login credentials'}
             }
@@ -132,7 +131,6 @@ export class UserService {
 
     verifyEmailAndSendOTP = async (email: string) => {
         try {
-            console.log('its herererererer')
             const emailExist = await UserRepository.verifyEmail(email)
             if (!emailExist) {
 
@@ -160,20 +158,16 @@ export class UserService {
 
     verifyForgotOtp = async (otp: string): Promise<boolean> => {
         try {
-            console.log('Verifying OTP:', otp);
             
             if (!this.OTP || !this.expiryOTP_time) {
                 throw new Error('OTP not initialized');
             }
     
             const actualOtp = this.OTP;
-            console.log('Actual OTP:', actualOtp);
     
             const currentTime = new Date();
-            console.log('Current time:', currentTime);
     
             const expiryTime = new Date(this.expiryOTP_time);
-            console.log('Expiry time:', expiryTime);
     
             if (currentTime > expiryTime) {
                 throw new Error('OTP has expired');
@@ -230,6 +224,22 @@ export class UserService {
             }else{
                 return false
             }
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    addAddressService = async(data: address, id: string)=>{
+        try {
+            const addressInfo = {
+                address: data.address,
+                country: data.country,
+                state: data.state,
+                city: data.city,
+                pincode: data.pincode
+            }
+            const createData = await UserRepository.addAddress(addressInfo, id)
+            return true
         } catch (error: any) {
             throw new Error(error.message)
         }

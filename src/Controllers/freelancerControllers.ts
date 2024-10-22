@@ -12,9 +12,7 @@ export class FreelancerController {
     verifyApplication = async (req: Request, res: Response): Promise<void> => {
 
         try {
-            console.log('its herererer')
             const {userId} = req.params
-            console.log(userId, 'we got the user id here')
             const files = (req as any).files as {
                 [fieldname: string]: Express.Multer.File[]
             }

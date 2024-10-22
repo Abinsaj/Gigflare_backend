@@ -86,7 +86,6 @@ export class UserController {
     verifyEmail = async(req: Request, res: Response)=>{
         try {
             const {email} = req.body
-            console.log(email,'this is the email we got')
             const verify = await this.userService.verifyEmailAndSendOTP(email)
             
             if(verify.bool){
@@ -112,9 +111,9 @@ export class UserController {
 
             const {otpValue} = req.body
             const result = await this.userService.verifyForgotOtp(otpValue)
-            console.log(' the result is ', result)
+
             if(result){
-                console.log('hi......hlo')
+
                 res.status(HTTP_statusCode.OK).json('verified')
             }else{
                 res.status(HTTP_statusCode.BadRequest).json('Wrong OTP')
@@ -141,9 +140,7 @@ export class UserController {
 
     createJob = async(req:Request, res:Response)=>{
         try {
-            console.log(req.body,'this is the body data')
             const data = req.body.values
-            console.log(data,' this is the data we got')
             const created = await this.userService.createJobService(data)
             if(created){
                 res.status(HTTP_statusCode.OK).json({success:true,message:'Job created successfully'})
@@ -152,6 +149,21 @@ export class UserController {
             }
         } catch (error: any) {
             res.status(HTTP_statusCode.InternalServerError).json({success: false,message:error.message})
+        }
+    }
+
+    addAddress = async(req: Request, res: Response) => {
+        try {
+            const {id} = req.params
+            const data = req.body
+            const create = await this.userService.addAddressService(data,id)
+            if(create){
+                res.status(HTTP_statusCode.OK).json({success: true, message:'Address added successfully'})
+            }else{
+            res.status(HTTP_statusCode.BadRequest).json({success: false, message:'Failed to add address'})
+            }
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json({success:false, message:error.message})
         }
     }
 }

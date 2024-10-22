@@ -32,7 +32,6 @@ export class AdminService{
     getUsersListService = async()=>{
         try {
             const users = await UserRepository.getUsers()
-            console.log(users, ' this is the users list ')
             const cleanedUsers = users.map((user: any)=>{
                 const {userID,name, email, phone, isBlocked, isFreelancer, created_At} = user._doc
                 return {
@@ -53,7 +52,6 @@ export class AdminService{
 
     getFreelancerApplicaitonService = async()=>{
         try {
-            console.log('ithththth ehehhrereer')
             const freelancer = await FreelancerRepository.getFreelancerApplications()
             if(!freelancer){
                 throw new Error('No data have been found')
@@ -67,8 +65,6 @@ export class AdminService{
 
     updateFreelancerService = async(applicationId: string,status: string)=>{
         try {
-            console.log('its already')
-            console.log(status,'ivida indaya mathi')
             const updateData = await FreelancerRepository.updateStatus(applicationId,status)
             if(!updateData){
                 return false
@@ -131,7 +127,6 @@ export class AdminService{
 
     blockUnblockCategoryService = async(name: string, status: string)=>{
         try {
-            console.log("the data reached service",status)
             let newStatus 
             if(status == "block"){
                 newStatus = true

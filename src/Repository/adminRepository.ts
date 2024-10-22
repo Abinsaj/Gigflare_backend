@@ -24,7 +24,6 @@ export class AdminRepository{
     static async getCategories(){
         try {
             const data = await CategorySchema.find()
-            console.log(data,'this is the data')
             if(!data){
                 throw new Error('No category data found')
             }
@@ -36,7 +35,6 @@ export class AdminRepository{
 
     static async blockUnblockCategory(name: string, status: boolean | undefined){
         try {
-            console.log('the data has reached here',status)
             const data = await CategorySchema.findOneAndUpdate(
                 {name},
                 {
