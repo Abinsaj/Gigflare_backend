@@ -42,7 +42,6 @@ const userSchema = new Schema<IUser>({
     },
     phone:{
         type:String,
-        required:true
     },
     password:{
         type:String,
@@ -50,7 +49,6 @@ const userSchema = new Schema<IUser>({
     },
     created_At:{
         type:Date,
-        required:true
     },
     isFreelancer:{
         type:Boolean,
@@ -88,6 +86,9 @@ const userSchema = new Schema<IUser>({
             type: String
         },
     }]
+},
+{
+    timestamps:true
 });
 
 userSchema.index(

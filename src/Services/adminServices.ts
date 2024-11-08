@@ -3,12 +3,14 @@ import FreelancerApplication from "../Models/applicationSchema";
 import { FreelancerRepository } from "../Repository/freelancerRepository";
 import { UserRepository } from "../Repository/userRepository";
 import { AdminRepository } from "../Repository/adminRepository";
+import { AwsConfig } from "../Config/awsFileConfig";
 
 
 require('dotenv').config()
 
 const adminEmail = process.env.ADMIN_EMAIL;
 const adminPassword = process.env.ADMIN_PASSWORD
+const aws = new AwsConfig()
 
 export class AdminService{
     verifyAdmin = async(email: string, password: string): Promise<{adminInfo: string} | void | any>=>{
@@ -32,19 +34,22 @@ export class AdminService{
     getUsersListService = async()=>{
         try {
             const users = await UserRepository.getUsers()
-            const cleanedUsers = users.map((user: any)=>{
-                const {userID,name, email, phone, isBlocked, isFreelancer, created_At} = user._doc
-                return {
-                    userID,
-                    name,
-                    email,
-                    phone,
-                    isBlocked,
-                    isFreelancer,
-                    created_At: created_At.toISOString().slice(0, 10)
-                }
-            })
-            return { users: cleanedUsers}
+            if(!users){
+                throw new Error('No data have found')
+            }
+            // const cleanedUsers = users.map((user: any)=>{
+            //     const {userID,name, email, isBlocked, isFreelancer, created_At} = user._doc
+            //     return {
+            //         userID,
+            //         name,
+            //         email,
+            //         isBlocked,
+            //         isFreelancer,
+            //         createdAt: created_At.toISOString().slice(0, 10)
+            //     }
+            // })
+            // console.log('appo ntho issue here')
+            return users
         } catch (error: any) {
             throw new Error(error.message)
         }
@@ -66,10 +71,11 @@ export class AdminService{
     updateFreelancerService = async(applicationId: string,status: string)=>{
         try {
             const updateData = await FreelancerRepository.updateStatus(applicationId,status)
+            console.log(updateData)
             if(!updateData){
-                return false
+                throw new Error('status updation failed')
             }else{
-                return true
+                return updateData
             }
         } catch (error) {
             throw error
@@ -143,4 +149,46 @@ export class AdminService{
             throw new Error(error.message)
         }
     }
+
+    getFreelancerService = async(id: string)=>{
+        try {
+            const freelancerData = await FreelancerRepository.getFreelancerDetail(id)
+            if(!freelancerData){
+                throw new Error('no data have been found')
+            }else{
+                const image = await aws.getFile('freelancerApplication/photo',freelancerData.photo?.fileurl)
+
+                let certificateImg = ''
+                for(const image of freelancerData.certficatImage!){
+                    certificateImg = await aws.getFile('freelancerApplication/certification',image)
+                }
+
+                return {freelancerData, image, certificateImg}
+            }
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    getFreelancersService = async()=>{
+        try {
+            const data = await AdminRepository.getFreelancers()
+            if(!data){
+                throw new Error('No data have been found')
+            }
+            return data
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    blockJobService = async(id: string, status: string | 'block' | 'unblock')=>{
+        try {
+            const updatedData = await AdminRepository.blockJob(id,status) 
+            return updatedData
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
 }

@@ -1,4 +1,8 @@
+import { application } from "express";
 import CategorySchema from "../Models/categorySchema";
+import { ObjectId } from "mongoose";
+import FreelancerApplication from "../Models/applicationSchema";
+import jobModel from "../Models/jobSchema";
 
 export class AdminRepository{
     static async createCatregory(name:string, description:string){
@@ -50,4 +54,58 @@ export class AdminRepository{
             throw new Error(error.message)
         }
     }
+
+    static async removeCategory(name: string){
+        try {
+            console.log(name,'this is the name')
+            const category = await CategorySchema.findOneAndDelete({name})
+            return true
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async getFreelancers(){
+        try {
+            const freelancer = await FreelancerApplication.find({status: 'accepted'})
+            return freelancer
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async getJobs(){
+        try {
+            const jobData = await jobModel.find({})
+            if(!jobData){
+                return {message:"No data found"}
+            }
+            return jobData
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async blockJob(_id: string, status: string | 'block' | 'unblock'){
+        try {
+            let updateData
+            if(status == 'block'){
+                 updateData = await jobModel.findByIdAndUpdate({_id},
+                    {
+                        isBlocked: true
+                    }
+                )
+            }else{
+                 updateData = await jobModel.findByIdAndUpdate({_id},
+                    {
+                        isBlocked: false
+                    }
+                )
+            }
+            return updateData
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
 }

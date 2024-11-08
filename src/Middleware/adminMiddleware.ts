@@ -3,12 +3,13 @@ import { NextFunction, Request, Response } from "express";
 import jwt, { decode, JwtPayload } from "jsonwebtoken";
 import { createToken } from "../Config/jwtConfig";
 import dotenv from 'dotenv'
+import userModel from "../Models/userSchema";
 
 dotenv.config()
 
 const secret_key = process.env.JWT_SECRET_KEY as string;
 
-const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
+const verifyAdminToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
         console.log('its heerererererere')
         const accessToken: string = req.cookies.AdminAccessToken;
@@ -50,7 +51,7 @@ const handleRefreshToken = async (req: Request, res: Response, next: NextFunctio
                         return res.status(HTTP_statusCode.Unauthorized).json({ message: "Access Denied, Insufficient token payloads" });
                     } else {
                         const accessToken = createToken(user_id, role);
-                        res.cookie('AccessToken', accessToken, {
+                        res.cookie('AdminAccessToken', accessToken, {
                             httpOnly: true,
                             sameSite: 'strict',
                             maxAge: 15 * 60 * 1000,
@@ -70,4 +71,4 @@ const handleRefreshToken = async (req: Request, res: Response, next: NextFunctio
     };
 };
 
-export default verifyToken
+export { verifyAdminToken }

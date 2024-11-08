@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { IUser } from "../Interfaces/common.interface";
 import { UserService } from "../Services/userServices";
 import HTTP_statusCode from "../Enums/httpStatusCode";
+import { UserRepository } from "../Repository/userRepository";
+import jwtDecode from 'jwt-decode'
+import axios from "axios";
 
 export class UserController {
     private userService: UserService;
@@ -44,23 +47,26 @@ export class UserController {
             const data = req.body
             const result = await this.userService.login(data.email, data.password);
             if (!result) {
-                console.log('itanu problem........')
                 return res.status(HTTP_statusCode.Unauthorized).json({success:false, message: "Invalid login credentials" })
             }
 
-            res.cookie('AccessToken', result.accessToken,{
+            console.log(result.accessToken, ' this is the result we got from the user service')
+            console.log(result.refreshToken, ' this is the result we got from the user service')
+
+            res.cookie('UserAccessToken',result.accessToken,{
                 httpOnly: true,
-                sameSite:'none',
+                sameSite: "none",
                 secure: true,
                 maxAge: 60 * 1000,
-            });
+            })
 
-            res.cookie('RefreshToken', result.refreshToken, {
+            res.cookie('UserRefreshToken',result.refreshToken,{
                 httpOnly: true,
-                sameSite:'none',
+                sameSite: "none",
                 secure: true,
                 maxAge: 7 * 24 * 60 * 60 * 10000
             })
+
             const { userInfo } = result;
             const cred = { userInfo };
             res.status(HTTP_statusCode.OK).json({success: true, message: 'Login successful', cred });
@@ -141,7 +147,9 @@ export class UserController {
     createJob = async(req:Request, res:Response)=>{
         try {
             const data = req.body.values
-            const created = await this.userService.createJobService(data)
+            const id = req.body.id
+            console.log(id,'this the id of the user we got while creating the job')
+            const created = await this.userService.createJobService(data,id)
             if(created){
                 res.status(HTTP_statusCode.OK).json({success:true,message:'Job created successfully'})
             }else{
@@ -166,4 +174,85 @@ export class UserController {
             res.status(HTTP_statusCode.InternalServerError).json({success:false, message:error.message})
         }
     }
+
+    getUserInfo = async(req:Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const data = await this.userService.getUserService(id)
+            res.status(HTTP_statusCode.OK).json({success: true, data})
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json({success:false, message: 'failed to fetch data'})
+        }
+    }
+
+    getFreelancerInfo = async(req:Request, res: Response)=>{
+        try {
+            console.log('yeah we reached here')
+            const freelancerData: any = await this.userService.getFreelancerInfoService()
+            console.log(freelancerData,' this is the data we got from the repository')
+            res.status(HTTP_statusCode.OK).json(freelancerData)
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json(error.message)
+        }
+    }
+
+    userChangePassword = async(req:Request,res: Response)=>{
+        try {
+            console.log(req.body,'value we got here is')
+            const {formData}= req.body
+            
+            const {id} = req.body
+            console.log(id,'this is the id')
+            
+            // const {currentPassword, newPassword, confirmPassword} = data
+            // if(newPassword !== confirmPassword){
+            //     res.status(HTTP_statusCode.OK).json({success:false,message: 'password should be same'})
+            // }
+            console.log('alfhaia')
+            const result = await this.userService.userChangePasswordService(formData,id)
+            
+            if(result){
+                res.status(HTTP_statusCode.OK).json({success:true,message: 'password change sucessfully',result})
+            }
+        } catch (error: any) {
+            res.status(HTTP_statusCode.InternalServerError).json(error.message)
+
+        }
+    }
+
+    googleSignIn = async(req: Request, res: Response)=>{
+        try {
+            const {tokenResponse} = req.body
+            console.log(tokenResponse,'this is the access token we get here')
+            const result = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{
+                'Authorization':`Bearer ${tokenResponse.access_token}`
+            }})
+            console.log(result,'this is the result we got')
+            const name = result.data.given_name +''+result.data.family_name
+            const email = result.data.email
+            const password = 'Gig@flare'
+            const data = await this.userService.googleSignupService(name,email,password)
+            res.status(HTTP_statusCode.OK).json(data)
+        } catch (error) {
+            
+        }
+    }
+
+    // googleLogin = async(req:Request, res: Response)=>{
+    //     try {
+    //         const {tokenResponse} = req.body
+    //         console.log(tokenResponse,'this is the access token we get here')
+    //         const result = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{
+    //             'Authorization':`Bearer ${tokenResponse.access_token}`
+    //         }})
+    //         console.log(result,'this is the result we got')
+    //         const name = result.data.given_name +''+result.data.family_name
+    //         const email = result.data.email
+    //         const password = 'Gig@flare'
+    //         const data = await this.userService.googleLoginService(name,email,password)
+    //         res.status(HTTP_statusCode.OK).json(data)
+    //     } catch (error) {
+            
+    //     }
+    // }
 }

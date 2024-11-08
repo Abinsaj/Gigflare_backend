@@ -15,8 +15,6 @@ const upload = multer({ storage: storage });
 const flexibleUpload = upload.fields([
   { name: 'photo', maxCount: 1 },
   { name: 'certification', maxCount: 5 }, 
-  { name: 'certification[0][file]', maxCount: 1 },
-  { name: 'certification[1][file]', maxCount: 1 },
   
 ]);
 
@@ -28,7 +26,8 @@ const handleMulterError = (err: any, req:any, res:any, next:any) => {
   next(err);
 };
 
-router.post('/application/:userId',flexibleUpload,handleMulterError,freelancerController.verifyApplication
-);
+router.post('/application/:userId',flexibleUpload,handleMulterError,freelancerController.verifyApplication);
+router.get('/getDetails/:id',freelancerController.getSingleDetails)
+router.get('/getJobDetails',freelancerController.getJobDetails)
 
 export default router;

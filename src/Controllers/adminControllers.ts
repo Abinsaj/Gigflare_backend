@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import HTTP_statusCode from "../Enums/httpStatusCode";
 import { AdminService } from "../Services/adminServices";
+import { AdminRepository } from "../Repository/adminRepository";
 
 export class AdminController{
     private adminService: AdminService;
@@ -37,8 +38,8 @@ export class AdminController{
 
     getUsers = async(req: Request, res: Response) =>{
         try {
+            console.log('dhe ivide')
             const users = await this.adminService.getUsersListService()
-            res.clearCookie('AccessToken')
             res.status(HTTP_statusCode.OK).json(users)
         } catch (error: any) {
             res.status(HTTP_statusCode.BadRequest).json(error.message)
@@ -58,14 +59,37 @@ export class AdminController{
         }
     }
 
+    getFreelancerDetails = async(req: Request, res: Response)=>{
+        try {
+            const {freelancerId} = req.params
+            const data = await this.adminService.getFreelancerService(freelancerId)
+            res.status(HTTP_statusCode.OK).json({freelancerData: data.freelancerData,profileImg:data.image,certImage:data.certificateImg})
+        } catch (error:any) {
+            res.status(HTTP_statusCode.InternalServerError).json(error.message || 'An unexpected error has occured')
+        }
+    }
+
     updateFreelancerStatus = async(req: Request, res: Response)=>{
         try {
+            console.log('its herere')
             const {applicationId }= req.params
             const {status} = req.body
-           
-
-            await this.adminService.updateFreelancerService(applicationId,status)
-            res.status(HTTP_statusCode.OK).json({message: 'Freelancer status updated successfully' })
+            console.log(applicationId)
+            console.log(status)
+            const updatedData = await this.adminService.updateFreelancerService(applicationId, status);
+            if (status === 'accepted') {
+                
+                res.status(HTTP_statusCode.OK).json({
+                    success:true,
+                    message: 'Freelancer accepted and user updated successfully',
+                });
+            } else {
+                
+                res.status(HTTP_statusCode.OK).json({
+                    success:true,
+                    message: 'Freelancer status updated',
+                });
+            }
         } catch (error) {
             res.status(HTTP_statusCode.BadRequest).json(error)
         }
@@ -139,6 +163,52 @@ export class AdminController{
             res.status(HTTP_statusCode.InternalServerError).json({success: false, message:error.message})
         }
     }
+
+    deleteCategory = async(req: Request,res: Response)=>{
+        try {
+            const {name} = req.params
+            const result = await AdminRepository.removeCategory(name)
+            console.log(result,'result we got after deleting the category')
+            res.status(HTTP_statusCode.OK).json({success: true,message: 'category deleted successfully'})
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json({success:false,message: 'Failed to delete the category'})
+        }
+    }
+
+    getFreelancers = async(req:Request,res:Response)=>{
+        try {
+            const data = await this.adminService.getFreelancersService()
+            res.status(HTTP_statusCode.OK).json(data)
+        } catch (error:any) {
+            res.status(HTTP_statusCode.BadRequest).json(error.message)
+        }
+    }
+
+    getJobList = async(req: Request, res: Response)=>{
+        try {
+            const data = await AdminRepository.getJobs()
+            console.log(data,' this is the data we got')
+            res.status(HTTP_statusCode.OK).json(data)
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json('An unexpected error has occured')
+        }
+    }
+
+    blockJob = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const {status} = req.body
+            console.log(id,'we got the id')
+            const data = await this.adminService.blockJobService(id,status)
+            console.log(data, ' this is the data')
+            res.status(HTTP_statusCode.OK).json(data)
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json('An unexpected error has occured')
+        }
+    }
+
 }
+
+
 
 

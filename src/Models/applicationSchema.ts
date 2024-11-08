@@ -9,11 +9,6 @@ interface IEducation {
 interface ICertification {
     name: string;
     year: number;
-    file?: {
-        filename: string;
-        contentType: string;
-        size: number;
-    };
 }
 
 interface IExperience {
@@ -23,12 +18,11 @@ interface IExperience {
 }
 
 interface IFileMetadata {
-    filename: string;
-    contentType: string;
-    size: number;
+    fileurl: string;
 }
 
 export interface IFreelancer extends Document {
+    userId: string;
     applicationId: string;
     firstName: string;
     lastName: string;
@@ -39,6 +33,7 @@ export interface IFreelancer extends Document {
     skills: string[];
     education?: IEducation[];
     certification?: ICertification[];
+    certficatImage?:string[]
     portfolio?: string;
     email: string;
     phone?: string;
@@ -46,12 +41,14 @@ export interface IFreelancer extends Document {
 }
 
 const fileMetadataSchema = new Schema<IFileMetadata>({
-    filename: String,
-    contentType: String,
-    size: Number
+    fileurl: String,
 });
 
 const freelancerSchema = new Schema<IFreelancer>({
+    userId:{
+        type: String,
+        required: true
+    },
     applicationId: {
         type: String,
         required: true,
@@ -79,11 +76,11 @@ const freelancerSchema = new Schema<IFreelancer>({
             required: true,
         },
         fromYear: {
-            type: Number,
+            type: String,
             required: true
         },
         toYear: {
-            type: Number,
+            type: String,
             required: true
         }
     }],
@@ -110,9 +107,9 @@ const freelancerSchema = new Schema<IFreelancer>({
         },
         year: {
             type: Number
-        },
-        file: fileMetadataSchema
+        }
     }],
+    certficatImage:[],
     portfolio: {
         type: String,
     },

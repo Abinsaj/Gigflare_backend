@@ -1,4 +1,5 @@
 import { IUser } from "../Interfaces/common.interface";
+import FreelancerApplication from "../Models/applicationSchema";
 import jobModel, { IJob } from "../Models/jobSchema";
 import userModel from "../Models/userSchema";
 import bcrypt from 'bcrypt'
@@ -25,18 +26,7 @@ export class UserRepository {
     static async verifyLogin(email: string, password: string): Promise<any>{
         try {
             const user = await userModel.findOne(
-                {email},
-                {
-                    _id: 0,
-                    userId: 1,
-                    name: 1,
-                    email: 1,
-                    password: 1,
-                    phone: 1,
-                    isBlocked: 1,
-                    created_At: 1,
-                    isFreelancer: 1
-                }
+                {email:email}
             )
             return user
         } catch (error) {
@@ -46,18 +36,9 @@ export class UserRepository {
 
     static async getUsers(){
         try {
-            const users = await userModel.find({},
-                {
-                    _id:0,
-                    userId:1,
-                    name: 1,
-                    email: 1,
-                    phone: 1,
-                    created_At: 1,
-                    isFreelancer: 1,
-                    isBlocked: 1,
-                }
-            )
+            console.log('hfla dhe ivide also')
+            const users = await userModel.find({})
+            console.log(users,'fasd')
             return users
         } catch (error) {
             throw new Error('failed to fetch users list from the db')
@@ -80,6 +61,7 @@ export class UserRepository {
 
     static async changePassword(password: string, email: string | null){
         try {
+            console.log('ithu ivida repository ethikku')
             const user = await userModel.findOneAndUpdate(
                 {email:email},
                 {password: password},
@@ -145,6 +127,66 @@ export class UserRepository {
             return user
         } catch (error: any) {
             throw new Error(error.message)
+        }
+    }
+
+    static async getUserInfo(userId: string){
+        try {
+            const userData = await userModel.findOne({userId})  
+            
+            return userData
+        } catch (error) {
+            throw new Error('An unexpected error has occured')
+        }
+    }
+
+    static async getFreelancerDetails(){
+        try {
+            const data = await FreelancerApplication.find({status:'accepted'})
+            if(!data){
+                throw new Error('No data have been found')
+            }
+            return data
+        } catch (error: any) {
+            throw new Error(error.message || "An unexpectd error has occured")
+        }
+    }
+
+    static async userChangePassword(password: string, userId: string){
+        try {
+            const data = await userModel.findOneAndUpdate(
+                {userId:userId},
+                {password:password},
+                {new: true}
+            )
+            if(!data){
+                throw new Error('No user found')
+            }
+            return data
+        } catch (error) {
+            throw new Error('Database operation failed')
+        }
+    }
+
+    static async findByEmail(email:string){
+        try {
+            const data = await userModel.findOne({email:email})
+            return data
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async saveUser(user:IUser){
+        try {
+            console.log('omg its reached here')
+            const newUser = new userModel(user)
+            console.log(newUser,'this is the new user')
+            await newUser.save()
+            return newUser
+        } catch (error) {
+            console.log(error)
+            return null
         }
     }
 }

@@ -1,6 +1,7 @@
 import mongoose, { Schema, model, Document, ObjectId, Mongoose, mongo } from "mongoose";
 
 export interface IJob extends Document{
+    userId: string,
     title: string,
     description: string
     skillsRequired: string[]
@@ -9,6 +10,7 @@ export interface IJob extends Document{
     deadLine: Date
     status: 'open' | 'closed' | 'completed'
     language: string
+    isBlocked: Boolean
     createdBy: ObjectId
     created_At: Date
     applicants?:[
@@ -25,6 +27,10 @@ export interface IJob extends Document{
 }
 
 const jobSchema = new Schema<IJob>({
+    userId:{
+        type: String,
+        required: true
+    },
     title:{
         type:String,
         required: true
@@ -53,6 +59,10 @@ const jobSchema = new Schema<IJob>({
     },
     language:{
         type: String
+    },
+    isBlocked:{
+        type: Boolean,
+        default:false
     },
     createdBy:{
         type: mongoose.Schema.Types.ObjectId,

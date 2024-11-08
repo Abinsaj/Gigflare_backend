@@ -4,9 +4,9 @@ export interface IUser{
     userId:string,
     name:string,
     email:string,
-    phone:string,
+    phone?:string,
     password:string,
-    created_At:Date,
+    created_At?:Date,
     isFreelancer?:boolean,
     isBlocked?:boolean,
     freelancerCredentials?:{

@@ -1,7 +1,7 @@
 import {
     S3Client,
     PutObjectCommand,
-    GetObjectCommand
+    GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import * as crypto from 'crypto'
@@ -23,15 +23,18 @@ export class AwsConfig {
         });
     }
 
-    async getFile(fileName: string, folder: string): Promise<string> {
+    async getFile(folder: string, fileName: string | undefined): Promise<string> {
         try {
+          
             const getObjectParams = {
                 Bucket: this.bucketName,
                 Key: `${folder}/${fileName}`
             }
+            console.log("path" , getObjectParams.Key );
+            
 
             const getCommand = new GetObjectCommand(getObjectParams)
-            const url = await getSignedUrl(this.s3client, getCommand, { expiresIn: 60 * 60 })
+            const url = await getSignedUrl(this.s3client, getCommand, { expiresIn: 60 * 60})
 
             return url
         } catch (error) {
@@ -54,16 +57,19 @@ export class AwsConfig {
                 Body: fileBuffer,
                 contentType: contentType,
             }
-
             const command = new PutObjectCommand(params)
             const sent = await this.s3client.send(command)
+            // const uploadedImage = await this.s3client.upload(params).promise();
+
+            
 
             if (sent) {
-                return uniqueName
+                return `${uniqueName}`
             } else {
                 throw new Error("Failed to sent image to s3")
             }
         } catch (error) {
+            console.log('its here with error')
             throw new Error('Failed to upload to s3')
         }
     }
