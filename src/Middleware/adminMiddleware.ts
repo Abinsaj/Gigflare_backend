@@ -11,9 +11,8 @@ const secret_key = process.env.JWT_SECRET_KEY as string;
 
 const verifyAdminToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        console.log('its heerererererere')
         const accessToken: string = req.cookies.AdminAccessToken;
-        console.log(accessToken,' this is the admin access token')
+        console.log('ACCESSTOKEN:',accessToken)
         if (accessToken) {
             jwt.verify(accessToken, secret_key, async (err, decoded) => {
                 if (err) {
@@ -57,6 +56,7 @@ const handleRefreshToken = async (req: Request, res: Response, next: NextFunctio
                             maxAge: 15 * 60 * 1000,
                             secure:true
                         });
+                        console.log(accessToken)
                         next();
                     };
                 };

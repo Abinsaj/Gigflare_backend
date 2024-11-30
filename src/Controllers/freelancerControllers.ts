@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import HTTP_statusCode from "../Enums/httpStatusCode";
 import { FreelancerService } from "../Services/freelancerServices";
-import { HttpRequest } from "aws-sdk";
 import { FreelancerRepository } from "../Repository/freelancerRepository";
+import { HttpStatusCode } from "axios";
+import AppError from "../utils/AppError";
 
 
 export class FreelancerController {
@@ -49,9 +50,17 @@ export class FreelancerController {
             res.status(HTTP_statusCode.OK).json({successs:true, message: 'Applicaiton submitted successfully'})
         } catch (error: any) {
             console.error("Error in tutor application controller:", error);
-            res
-                .status(HTTP_statusCode.InternalServerError)
-                .json({ success: false, message: error.message || 'Internal Server Error' });
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
         }
     }
 
@@ -61,6 +70,7 @@ export class FreelancerController {
             const {id} = req.params
             console.log(id)
             const data = await this.freelancerService.getSingleDetailService(id)
+            console.log(data,'this is the data , i think the id will be here')
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error: any) {
             res.status(HTTP_statusCode.InternalServerError).json(error.message)
@@ -69,10 +79,136 @@ export class FreelancerController {
 
     getJobDetails = async(req: Request, res: Response)=>{
         try {
-            const data = await FreelancerRepository.getJobs()
+            const {id} = req.params
+            console.log(id,'this is the id we got')
+            const data = await FreelancerRepository.getJobs(id)
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json('Internal server Error')
         }
     }
+
+    createProposals = async(req: Request, res: Response)=>{
+        try {
+            const { data, userId, jobId, freelancerId } = req.body
+            const result = await this.freelancerService.createProposalService(data, userId, jobId, freelancerId)
+            res.status(HTTP_statusCode.OK).json({success: true, message: 'Proposal Submitted successfully',result})
+        } catch (error) {
+            res.status(HttpStatusCode.InternalServerError).json(error)
+        }
+    }
+
+    getProposals = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params;
+            console.log(id,'the id we got in the freelancer controller')
+            const data = await this.freelancerService.getProposalsService(id)
+            res.status(HttpStatusCode.Ok).json(data)
+        } catch (error) {
+            res.status(HttpStatusCode.InternalServerError).json({ message:' An unexpected error has occur'})
+        }
+    }
+
+    getJobOffers = async(req: Request, res: Response )=>{
+        try {
+            const {id} = req.params;
+            const data = await FreelancerRepository.getJobOfferData(id)
+            console.log(data,' we got the data here in controller')
+            if(data !== null){
+                res.status(HTTP_statusCode.OK).json(data)
+            }
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json({message:'An Error occured'})
+        }
+    }
+
+    acceptRejectOffer = async(req: Request, res: Response)=>{
+        try {
+            console.log('Data from Frontend', req.body)
+            const {data} = req.body
+            const result = await this.freelancerService.acceptOfferService(data)
+            if(result){
+                res.status(HTTP_statusCode.OK).json({success: true, message:'Job accepted and contract has been generated'})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getContracts = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const data = await this.freelancerService.getContractService(id)
+            res.status(HTTP_statusCode.OK).json({data})
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    signContract = async(req: Request, res: Response)=>{
+        try {
+            console.log('its here', req.body)
+            const {hash, contractId, freelancerId} = req.body
+            const result = await this.freelancerService.signContractService(hash, contractId, freelancerId)
+            if(result.success){
+                res.status(HTTP_statusCode.OK).json({success: result.success,message:'Contract signed', key: result.privateKey,signature: result.signature})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    changeStatus = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const {status} = req.body
+            const result = await this.freelancerService.changeStatusService(id,status)
+            if(result){
+                res.status(HTTP_statusCode.OK).json({success: true, message: ' Project submitted '})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+    
 }

@@ -13,7 +13,7 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
         console.log(accessToken)
         if (accessToken) {
             jwt.verify(accessToken, secret_key, async (err: any, decoded: any) => {
-                if (err) {
+                if (err) { 
                     await handleRefreshToken(req, res, next)
                 } else {
                     const { user_id, role, isBlocked } = decoded as jwt.JwtPayload
@@ -62,6 +62,7 @@ const handleRefreshToken = async (req: Request, res: Response, next: NextFunctio
                                 secure: true,
                                 maxAge: 15 * 60 * 1000
                             });
+                         
                             next();
                         }
                     }

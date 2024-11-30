@@ -182,9 +182,9 @@ export class AdminService{
         }
     }
 
-    blockJobService = async(id: string, status: string | 'block' | 'unblock')=>{
+    jobActivateService = async(id: string)=>{
         try {
-            const updatedData = await AdminRepository.blockJob(id,status) 
+            const updatedData = await AdminRepository.activateJob(id) 
             return updatedData
         } catch (error: any) {
             throw new Error(error.message)

@@ -1,36 +1,28 @@
 import mongoose, { Schema, model, Document, ObjectId, Mongoose, mongo } from "mongoose";
 
 export interface IJob extends Document{
-    userId: string,
     title: string,
     description: string
     skillsRequired: string[]
     budget?: number
     category: ObjectId
-    deadLine: Date
+    duration: string
+    projectType: string;
     status: 'open' | 'closed' | 'completed'
-    language: string
     isBlocked: Boolean
     createdBy: ObjectId
     created_At: Date
-    applicants?:[
-        {
-            freelancerId: ObjectId
-            status: 'pending' | 'rejected' | 'hired'
-        }
-    ],
+    proposals?:ObjectId[],
+    invitesSent?:ObjectId[],
     hiredFreelancer?:{
         freelancerId: ObjectId
         hiredDate: Date
         contractId: ObjectId
-    }
+    },
+    isActive: boolean,
 }
 
 const jobSchema = new Schema<IJob>({
-    userId:{
-        type: String,
-        required: true
-    },
     title:{
         type:String,
         required: true
@@ -49,16 +41,16 @@ const jobSchema = new Schema<IJob>({
         type: String,
         required: true
     },
-    deadLine:{
-        type: Date
+    duration:{
+        type: String
+    },
+    projectType:{
+        type: String
     },
     status:{
         type: String,
         enum: ['open','closed','completed'],
         default: 'open'
-    },
-    language:{
-        type: String
     },
     isBlocked:{
         type: Boolean,
@@ -71,17 +63,16 @@ const jobSchema = new Schema<IJob>({
     created_At:{
         type: Date
     },
-    applicants:[
+    proposals:[
         {
-            freelancerId:{
-                type: mongoose.Schema.Types.ObjectId,
-                ref:'User'
-            },
-            status:{
-                type: String,
-                enum: ['pending', 'rejected', 'hired'],
-                default: 'pending'
-            }
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Proposals'
+        }
+    ],
+    invitesSent:[
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
         }
     ],
     hiredFreelancer:{
@@ -96,7 +87,11 @@ const jobSchema = new Schema<IJob>({
             type: mongoose.Schema.Types.ObjectId,
             ref : 'Contract'
         }
-    }
+    },
+    isActive:{
+        type:Boolean,
+        default: false
+    },
 },{
     timestamps: true
 })

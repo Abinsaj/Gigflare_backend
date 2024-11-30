@@ -1,8 +1,15 @@
+import e from "express";
 import { IUser } from "../Interfaces/common.interface";
 import FreelancerApplication from "../Models/applicationSchema";
 import jobModel, { IJob } from "../Models/jobSchema";
 import userModel from "../Models/userSchema";
 import bcrypt from 'bcrypt'
+import CategorySchema from "../Models/categorySchema";
+import ProposalModel from "../Models/proposalSchema";
+import { ObjectId } from "mongoose";
+import jobOfferModel from "../Models/jobOfferSchema";
+import ContractSchema from "../Models/contractSchema";
+import AppError from "../utils/AppError";
 
 
 export class UserRepository {
@@ -110,9 +117,11 @@ export class UserRepository {
 
     static async createJob(data: any){
         try {
+            console.log(data,'This is the data we got in the repository')
             const newJob = new jobModel(data)
             return await newJob.save()
         } catch (error:any) {
+            console.log(error,'this is the error caused')
             throw new Error(error.message)
         }
     }
@@ -130,9 +139,9 @@ export class UserRepository {
         }
     }
 
-    static async getUserInfo(userId: string){
+    static async getUserInfo(_id: string){
         try {
-            const userData = await userModel.findOne({userId})  
+            const userData = await userModel.findOne({_id})  
             
             return userData
         } catch (error) {
@@ -152,10 +161,10 @@ export class UserRepository {
         }
     }
 
-    static async userChangePassword(password: string, userId: string){
+    static async userChangePassword(password: string, _id: string){
         try {
             const data = await userModel.findOneAndUpdate(
-                {userId:userId},
+                {_id:_id},
                 {password:password},
                 {new: true}
             )
@@ -179,9 +188,7 @@ export class UserRepository {
 
     static async saveUser(user:IUser){
         try {
-            console.log('omg its reached here')
             const newUser = new userModel(user)
-            console.log(newUser,'this is the new user')
             await newUser.save()
             return newUser
         } catch (error) {
@@ -189,4 +196,147 @@ export class UserRepository {
             return null
         }
     }
+
+    static async getUserJob(_id: string){
+        try {
+            const jobData = await jobModel.find({createdBy:_id}) 
+            if(!jobData){
+                throw new Error('No data have been found')
+            }
+            return jobData
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    static async getCategories(){
+        try {
+            const catData = await CategorySchema.find()
+            if(!catData){
+                throw new Error('No data have been found')
+            }
+            return catData
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async getProposals(jobId: string){
+        try {
+            const proposalData = await ProposalModel.find({jobId}).lean()
+            console.log(proposalData,'this the data we got in Repository')
+            return proposalData
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async getFreelancers(id:ObjectId[]){
+        try {
+            const data = await FreelancerApplication.find({_id:{$in:id}}).lean()
+            return data
+        } catch (error) {
+            console.log(error) 
+        }
+    }
+
+    static async approveProposal(id: string, status: 'rejected' | 'approved'){
+        try {
+            console.log(id, ' this is the id and this is hte status', status)
+            const data = await ProposalModel.findByIdAndUpdate({_id: id},
+                {
+                    $set:{status:status}
+                },
+                {
+                    new: true
+                }
+            )
+            return data
+        } catch (error) {
+            console.log('Error updating proposal data',error)
+            throw error
+        }
+    }
+
+    static async getJobOffer(offerData: any,jobId: string, freelancerId: string, userId: string){
+        try {
+            console.log(offerData,'the data we got here is')
+            const data = await jobOfferModel.findOne({freelancer: freelancerId})
+            if(data){
+                return {success: false}
+            }else{
+                const data = {
+                    clientId: userId,
+                    freelancerId: freelancerId,
+                    jobId: jobId,
+                    budget: offerData.budget,
+                    fromDate: offerData.fromDate,
+                    toDate: offerData.toDate,
+                    upfrontAmount: offerData.upfrontAmount,
+                    restAmount: offerData.completionAmount,
+                    platformFee: offerData.platformFeeAmount,
+                }
+                const newData = await jobOfferModel.create(data)
+                 await  newData.save()
+                 return {success:true}
+                
+            }
+        } catch (error) {
+            console.log(error)
+            // throw error
+        }
+    }
+
+    static async getContracts(clientId: string){
+        try {
+            const data = await ContractSchema.find({clientId})
+            .populate('freelancerId')
+            .populate('clientId')
+            .populate('jobId')
+            return data
+        } catch (error: any) {
+            throw new AppError('FetchContractDetailError',
+                500,
+                error.message || 'An unexpected error occured'
+            )
+        }
+    }
+
+    static async getContractDetails(userId: ObjectId, contractId: ObjectId){
+        try {
+            const contract = await ContractSchema.findOne({
+                _id: contractId,
+                $or:[
+                    { freelancerId: userId },
+                    { clientId: userId }
+                ]
+            })
+
+            if (!contract) {
+                throw AppError.notFound('Contract not found for the given user and contract ID');
+            }
+    
+            return contract; 
+        } catch (error: any) {
+            if(error instanceof AppError){
+                throw error
+              }
+                console.error('Error fetching contract details:', error.message);
+                throw new AppError('FaieldFetchData',500,error.message || 'Failed to fetch contract details');
+        }
+    }
+
+    static async getSingleContract(id: ObjectId){
+        try {
+            const data = await ContractSchema.findOne({_id:id})
+            console.log(data)
+            return data
+        } catch (error: any) {
+            throw new AppError('FetchContractFailed',
+                500,
+                error.message || 'Error fetching contract'
+            )
+        }
+    }
+    
 }

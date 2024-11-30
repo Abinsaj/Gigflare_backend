@@ -108,4 +108,17 @@ export class AdminRepository{
         }
     }
 
+    static async activateJob(_id: string){
+        try {
+            const updatedData = await jobModel.findByIdAndUpdate({_id},
+                {
+                    isActive: true
+                }
+            )
+            return updatedData
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
 }

@@ -1,4 +1,4 @@
-import mongoose, { model, Document, Schema } from "mongoose";
+import mongoose, { model, Document, Schema, ObjectId } from "mongoose";
 
 interface IEducation {
     collageName: string;
@@ -12,6 +12,7 @@ interface ICertification {
 }
 
 interface IExperience {
+    categoryId: mongoose.Schema.Types.ObjectId,
     expertise: string;
     fromYear: number;
     toYear: number;
@@ -22,14 +23,14 @@ interface IFileMetadata {
 }
 
 export interface IFreelancer extends Document {
-    userId: string;
+    userId: ObjectId;
     applicationId: string;
     firstName: string;
     lastName: string;
     photo?: IFileMetadata;
     description: string;
     language: string;
-    experience: IExperience[];
+    experience: IExperience;
     skills: string[];
     education?: IEducation[];
     certification?: ICertification[];
@@ -46,8 +47,8 @@ const fileMetadataSchema = new Schema<IFileMetadata>({
 
 const freelancerSchema = new Schema<IFreelancer>({
     userId:{
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     applicationId: {
         type: String,
@@ -70,10 +71,15 @@ const freelancerSchema = new Schema<IFreelancer>({
         type: String,
         required: true
     },
-    experience: [{
-        expertise: {
-            type: String,
+    experience: {
+        categoryId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Category',
             required: true,
+        },
+        expertise:{
+            type:String,
+            required: true
         },
         fromYear: {
             type: String,
@@ -83,7 +89,7 @@ const freelancerSchema = new Schema<IFreelancer>({
             type: String,
             required: true
         }
-    }],
+    },
     skills: [{
         type: String
     }],

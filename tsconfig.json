@@ -8,5 +8,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/Config/jwtConfig.ts"]
+  "include": ["src/**/*.ts", "src/Config/jwtConfig.ts","src/Config/session.ts"]
 }

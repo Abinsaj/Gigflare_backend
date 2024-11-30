@@ -63,6 +63,7 @@ export class AdminController{
         try {
             const {freelancerId} = req.params
             const data = await this.adminService.getFreelancerService(freelancerId)
+            console.log(data,'this is the data we need to send to frontend')
             res.status(HTTP_statusCode.OK).json({freelancerData: data.freelancerData,profileImg:data.image,certImage:data.certificateImg})
         } catch (error:any) {
             res.status(HTTP_statusCode.InternalServerError).json(error.message || 'An unexpected error has occured')
@@ -71,17 +72,16 @@ export class AdminController{
 
     updateFreelancerStatus = async(req: Request, res: Response)=>{
         try {
-            console.log('its herere')
             const {applicationId }= req.params
             const {status} = req.body
-            console.log(applicationId)
-            console.log(status)
             const updatedData = await this.adminService.updateFreelancerService(applicationId, status);
+            console.log(updatedData,'this is the updated data we got')
             if (status === 'accepted') {
                 
                 res.status(HTTP_statusCode.OK).json({
                     success:true,
                     message: 'Freelancer accepted and user updated successfully',
+                    freelancerInfo: updatedData
                 });
             } else {
                 
@@ -142,6 +142,7 @@ export class AdminController{
 
     getCategories = async(req: Request,res: Response)=>{
         try {
+            console.log('category get herer')
             const data = await this.adminService.getCategoryService()
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, message:'Data fetched successfully',data})
@@ -194,14 +195,13 @@ export class AdminController{
         }
     }
 
-    blockJob = async(req: Request, res: Response)=>{
+    activateJob = async(req: Request, res: Response)=>{
         try {
-            const {id} = req.params
-            const {status} = req.body
+            const {id} = req.body
             console.log(id,'we got the id')
-            const data = await this.adminService.blockJobService(id,status)
+            const data = await this.adminService.jobActivateService(id)
             console.log(data, ' this is the data')
-            res.status(HTTP_statusCode.OK).json(data)
+            res.status(HTTP_statusCode.OK).json({success: true,data: data})
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json('An unexpected error has occured')
         }

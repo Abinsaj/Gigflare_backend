@@ -4,7 +4,8 @@ import { UserService } from "../Services/userServices";
 import HTTP_statusCode from "../Enums/httpStatusCode";
 import { UserRepository } from "../Repository/userRepository";
 import jwtDecode from 'jwt-decode'
-import axios from "axios";
+import axios, { HttpStatusCode } from "axios";
+import AppError from "../utils/AppError";
 
 export class UserController {
     private userService: UserService;
@@ -49,9 +50,6 @@ export class UserController {
             if (!result) {
                 return res.status(HTTP_statusCode.Unauthorized).json({success:false, message: "Invalid login credentials" })
             }
-
-            console.log(result.accessToken, ' this is the result we got from the user service')
-            console.log(result.refreshToken, ' this is the result we got from the user service')
 
             res.cookie('UserAccessToken',result.accessToken,{
                 httpOnly: true,
@@ -146,12 +144,13 @@ export class UserController {
 
     createJob = async(req:Request, res:Response)=>{
         try {
-            const data = req.body.values
+            console.log('its herer')
+            const value = req.body.formData
             const id = req.body.id
-            console.log(id,'this the id of the user we got while creating the job')
-            const created = await this.userService.createJobService(data,id)
-            if(created){
-                res.status(HTTP_statusCode.OK).json({success:true,message:'Job created successfully'})
+            const created = await this.userService.createJobService(value,id)
+            if(created.bool == true){
+                const data = created.data
+                res.status(HTTP_statusCode.OK).json({success:true,message:'Job created successfully',data:data})
             }else{
                 res.status(HTTP_statusCode.BadRequest).json({success:false,message:'Failed to create job'})
             }
@@ -198,17 +197,10 @@ export class UserController {
 
     userChangePassword = async(req:Request,res: Response)=>{
         try {
-            console.log(req.body,'value we got here is')
             const {formData}= req.body
             
             const {id} = req.body
-            console.log(id,'this is the id')
             
-            // const {currentPassword, newPassword, confirmPassword} = data
-            // if(newPassword !== confirmPassword){
-            //     res.status(HTTP_statusCode.OK).json({success:false,message: 'password should be same'})
-            // }
-            console.log('alfhaia')
             const result = await this.userService.userChangePasswordService(formData,id)
             
             if(result){
@@ -227,32 +219,175 @@ export class UserController {
             const result = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{
                 'Authorization':`Bearer ${tokenResponse.access_token}`
             }})
-            console.log(result,'this is the result we got')
             const name = result.data.given_name +''+result.data.family_name
             const email = result.data.email
             const password = 'Gig@flare'
             const data = await this.userService.googleSignupService(name,email,password)
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error) {
-            
+            res.status(HTTP_statusCode.InternalServerError).json(error)
         }
     }
 
-    // googleLogin = async(req:Request, res: Response)=>{
-    //     try {
-    //         const {tokenResponse} = req.body
-    //         console.log(tokenResponse,'this is the access token we get here')
-    //         const result = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{
-    //             'Authorization':`Bearer ${tokenResponse.access_token}`
-    //         }})
-    //         console.log(result,'this is the result we got')
-    //         const name = result.data.given_name +''+result.data.family_name
-    //         const email = result.data.email
-    //         const password = 'Gig@flare'
-    //         const data = await this.userService.googleLoginService(name,email,password)
-    //         res.status(HTTP_statusCode.OK).json(data)
-    //     } catch (error) {
-            
-    //     }
-    // }
+    getSigleJob = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const result = await UserRepository.getUserJob(id)
+            res.status(HTTP_statusCode.OK).json(result)
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json(error)
+        }
+    }
+
+    getCategoryList = async(req: Request, res: Response)=>{
+        try {
+            const data = await UserRepository.getCategories()
+            res.status(HTTP_statusCode.OK).json(data)
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json(error)
+        }
+    }
+
+    getProposals = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,'its here in the controller')
+            const {id} = req.params
+            console.log(id)
+            const data = await this.userService.getProposalServices(id)
+            console.log(data)
+            res.status(HTTP_statusCode.OK).json({success: true,data:data})
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json({success: false, message: 'An enexpected error has occured'})
+        }
+    }
+
+    approveProposal = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const {status} = req.body
+            console.log(id,'..........',status,'afhoahgoqehgoqg')
+            const data = await this.userService.approveProposalService(id, status)
+            if(data?.status === 'approved'){
+                res.status(HTTP_statusCode.OK).json({success: true, message: 'Proposal approved'})
+            }else if(data?.status == 'rejected'){
+                res.status(HTTP_statusCode.OK).json({success: false, message: 'Proposal rejected'})
+            }else{
+                res.status(HTTP_statusCode.NoChange).json({message:'No change'})
+            }
+        } catch (error: any) {
+            res.status(HttpStatusCode.InternalServerError).json({message:'An error has occured',error})
+        }
+    }
+
+    userLogout = async(req: Request, res: Response)=>{
+        try {
+            res.clearCookie('UserAccessToken')
+            res.status(HTTP_statusCode.OK).json({success: true, message: 'User Logged out'})
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json({success: false, message: 'Error'})
+        }
+    }
+
+    sendJobOffer = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,'kjjkgh')
+            const { offerData, freelancerId, jobId ,userId} = req.body
+            console.log(offerData,'its herere')
+            const data = await this.userService.sendJobOfferService(offerData, freelancerId, jobId ,userId )
+            if(data == true){
+                res.status(HTTP_statusCode.OK).json({success: true, message:'offer has been sent to the user'})
+            }else{
+                res.status(HTTP_statusCode.OK).json({success: true, message:'Offer has already sent to the user'})
+            }
+        } catch (error) {
+            res.status(HTTP_statusCode.InternalServerError).json('An unexpected error has been occured')
+        }
+    }
+
+    getContracts = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const result = await this.userService.getContractService(id)
+            res.status(HTTP_statusCode.OK).json(result)
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    signContract = async(req: Request, res: Response)=>{
+        try {
+            const {hash, contractId, userId} = req.body;
+            const result = await this.userService.signContractService(hash, contractId, userId)
+            if(result.success){
+                res.status(HTTP_statusCode.OK).json({success: result.success,message:'Contract signed', key: result.privateKey,signature: result.signature})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    createCheckoutSession = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,'this is the body')
+            const {data} = req.body
+            const result = await this.userService.createCheckoutSessionService(data.id, data.initialPayment, data.remainingPayment)
+            if(result){
+                res.status(HTTP_statusCode.OK).json(result)
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    confirmPayment = async(req: Request, res: Response)=>{
+        try {
+            const data = await this.userService.confirmPaymentService()
+            if(data){
+                res.redirect(`${process.env.CLIENT_URL}/success`)
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
 }

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { FreelancerController } from "../Controllers/freelancerControllers";
 import { FreelancerService } from "../Services/freelancerServices";
 import multer from "multer";
+import verifyToken from "../Middleware/userMiddleware";
 
 const router = Router();
 
@@ -27,7 +28,15 @@ const handleMulterError = (err: any, req:any, res:any, next:any) => {
 };
 
 router.post('/application/:userId',flexibleUpload,handleMulterError,freelancerController.verifyApplication);
-router.get('/getDetails/:id',freelancerController.getSingleDetails)
-router.get('/getJobDetails',freelancerController.getJobDetails)
+router.get('/getDetails/:id',verifyToken,freelancerController.getSingleDetails)
+router.get('/getJobDetails/:id',verifyToken,freelancerController.getJobDetails)
+router.post('/proposal',verifyToken,freelancerController.createProposals)
+router.get('/getproposals/:id',verifyToken,freelancerController.getProposals)
+router.get('/getjoboffer/:id',verifyToken,freelancerController.getJobOffers)
+router.post('/acceptjoboffer',verifyToken,freelancerController.acceptRejectOffer)
+router.get('/getcontracts/:id',verifyToken,freelancerController.getContracts)
+router.post('/signcontract',verifyToken,freelancerController.signContract)
+router.post('/statuschange/:id',verifyToken,freelancerController.changeStatus)
+
 
 export default router;
