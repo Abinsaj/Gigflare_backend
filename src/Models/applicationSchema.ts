@@ -29,12 +29,12 @@ export interface IFreelancer extends Document {
     lastName: string;
     photo?: IFileMetadata;
     description: string;
-    language: string;
+    language: string[];
     experience: IExperience;
-    skills: string[];
+    skills: ObjectId[];
     education?: IEducation[];
     certification?: ICertification[];
-    certficatImage?:string[]
+    certficatImage?: string[]
     portfolio?: string;
     email: string;
     phone?: string;
@@ -46,7 +46,7 @@ const fileMetadataSchema = new Schema<IFileMetadata>({
 });
 
 const freelancerSchema = new Schema<IFreelancer>({
-    userId:{
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
@@ -67,18 +67,18 @@ const freelancerSchema = new Schema<IFreelancer>({
         type: String,
         required: true,
     },
-    language: {
+    language: [{
         type: String,
         required: true
-    },
+    }],
     experience: {
         categoryId: {
             type: Schema.Types.ObjectId,
             ref: 'Category',
             required: true,
         },
-        expertise:{
-            type:String,
+        expertise: {
+            type: String,
             required: true
         },
         fromYear: {
@@ -91,7 +91,8 @@ const freelancerSchema = new Schema<IFreelancer>({
         }
     },
     skills: [{
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Skill'
     }],
     education: [{
         collageName: {
@@ -115,7 +116,7 @@ const freelancerSchema = new Schema<IFreelancer>({
             type: Number
         }
     }],
-    certficatImage:[],
+    certficatImage: [],
     portfolio: {
         type: String,
     },

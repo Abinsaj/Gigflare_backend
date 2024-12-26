@@ -30,6 +30,7 @@ const handleMulterError = (err: any, req:any, res:any, next:any) => {
 router.post('/application/:userId',flexibleUpload,handleMulterError,freelancerController.verifyApplication);
 router.get('/getDetails/:id',verifyToken,freelancerController.getSingleDetails)
 router.get('/getJobDetails/:id',verifyToken,freelancerController.getJobDetails)
+router.post('/updateprofile/:id', upload.single('photo'),freelancerController.updateProfile)
 router.post('/proposal',verifyToken,freelancerController.createProposals)
 router.get('/getproposals/:id',verifyToken,freelancerController.getProposals)
 router.get('/getjoboffer/:id',verifyToken,freelancerController.getJobOffers)
@@ -37,6 +38,12 @@ router.post('/acceptjoboffer',verifyToken,freelancerController.acceptRejectOffer
 router.get('/getcontracts/:id',verifyToken,freelancerController.getContracts)
 router.post('/signcontract',verifyToken,freelancerController.signContract)
 router.post('/statuschange/:id',verifyToken,freelancerController.changeStatus)
-
+router.post('/deleteproposal/:id',verifyToken,freelancerController.removeProposal)
+router.get('/notifications/:id',verifyToken,freelancerController.getNotification)
+router.get('/getworkhistory/:id',verifyToken,freelancerController.getWorkHistory)
+router.get('/getskills/:id',verifyToken,freelancerController.getSkillList)
+router.get('/filteredjob',verifyToken,freelancerController.getFilteredData)
+router.get('/dashboarddata/:id',verifyToken,freelancerController.getDashboardData)
+router.get('/ratingreview/:id',verifyToken,freelancerController.getRatingReview)
 
 export default router;

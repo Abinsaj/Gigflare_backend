@@ -44,6 +44,8 @@ export class AwsConfig {
 
     async uploadFile(folderPath: string, file: Express.Multer.File): Promise<string> {
         try {
+            
+            console.log(folderPath, file,'we got here')
             let uniqueName = crypto.randomBytes(16).toString('hex')
             let fileBuffer: Buffer;
             let contentType: string;

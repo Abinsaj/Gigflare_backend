@@ -6,6 +6,8 @@ import { UserRepository } from "../Repository/userRepository";
 import jwtDecode from 'jwt-decode'
 import axios, { HttpStatusCode } from "axios";
 import AppError from "../utils/AppError";
+import { AdminRepository } from "../Repository/adminRepository";
+import { ObjectId } from "mongoose";
 
 export class UserController {
     private userService: UserService;
@@ -144,7 +146,6 @@ export class UserController {
 
     createJob = async(req:Request, res:Response)=>{
         try {
-            console.log('its herer')
             const value = req.body.formData
             const id = req.body.id
             const created = await this.userService.createJobService(value,id)
@@ -186,8 +187,10 @@ export class UserController {
 
     getFreelancerInfo = async(req:Request, res: Response)=>{
         try {
-            console.log('yeah we reached here')
-            const freelancerData: any = await this.userService.getFreelancerInfoService()
+            console.log(req.query,'yeah we reached here')
+            const {id, page, limit} = req.query;
+            const freelancerData: any = await this.userService.getFreelancerInfoService(id,page, limit)
+            console.log(freelancerData,'Freelancer Data')
             console.log(freelancerData,' this is the data we got from the repository')
             res.status(HTTP_statusCode.OK).json(freelancerData)
         } catch (error: any) {
@@ -290,10 +293,30 @@ export class UserController {
 
     sendJobOffer = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'kjjkgh')
-            const { offerData, freelancerId, jobId ,userId} = req.body
-            console.log(offerData,'its herere')
-            const data = await this.userService.sendJobOfferService(offerData, freelancerId, jobId ,userId )
+            const { freelancerId, jobId, userId } = req.query; 
+            const { budget, fromDate, toDate, jobTitle, description, upfrontAmount, completionAmount, platformFeeAmount } = req.body;
+            const attachment = req.file;
+
+        if (!freelancerId || !jobId || !userId) {
+             res.status(HTTP_statusCode.BadRequest).json({ success: false, message: 'Missing required query parameters.' });
+        }
+
+        if (!budget || !fromDate || !toDate || !jobTitle || !description) {
+             res.status(HTTP_statusCode.BadRequest).json({ success: false, message: 'Missing required fields in offer data.' });
+        }
+
+        const offerData = {
+            budget,
+            fromDate,
+            toDate,
+            jobTitle,
+            description,
+            upfrontAmount,
+            completionAmount,
+            platformFeeAmount,
+            attachmentPath: attachment,
+        };
+            const data = await this.userService.sendJobOfferService(offerData, freelancerId as string, jobId as string ,userId as string )
             if(data == true){
                 res.status(HTTP_statusCode.OK).json({success: true, message:'offer has been sent to the user'})
             }else{
@@ -371,10 +394,227 @@ export class UserController {
 
     confirmPayment = async(req: Request, res: Response)=>{
         try {
-            const data = await this.userService.confirmPaymentService()
-            if(data){
-                res.redirect(`${process.env.CLIENT_URL}/success`)
+            const { session_id } = req.query; 
+
+        if (!session_id) {
+            throw AppError.badRequest('Session ID is required');
+        }
+
+        const data = await this.userService.confirmPaymentService(session_id as string);
+
+        if (data) {
+            res.redirect(`${process.env.CLIENT_URL}/success`);
+        }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
             }
+        }
+    }
+
+    getUserNotification = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params;
+            const data = await UserRepository.getNotification(id)
+            console.log(data, 'we got the notification data')
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }else{
+                res.status(HTTP_statusCode.NotFound).json({success: false, message: 'No notificaion found'})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    viewedNotification = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,'this is the body things')
+            const {id} = req.params
+            const {type} = req.body
+            
+            const data = await UserRepository.changeNotificationStaus(id, type)
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }else{
+                res.status(HTTP_statusCode.NoChange).json({success: false})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    viewedMessageNotification = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,'its herererererererererereeerererer')
+            const {userId, otherId} = req.body
+            const data = await UserRepository.messageNotificationChange(userId, otherId) 
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }else{
+                res.status(HTTP_statusCode.NoChange).json({success: false})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getWorkHistory = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const data = await this.userService.getWorkHistoryService(id)
+            if(!data){
+                res.status(HTTP_statusCode.NotFound).json({success: false})
+            }else{
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    addRatingAndReview = async(req: Request, res: Response)=>{
+        try {
+           
+            const { data } = req.body
+            const result = await this.userService.addRatingAndReviewService(data)
+            if(result){
+                res.status(HTTP_statusCode.OK).json({success: true, message:'Your review has been added', data:result})
+            }else{
+                res.status(HTTP_statusCode.TaskFailed).json({success: false, message: 'Failed to add rating and review'})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getRatingAndReview = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const data = await UserRepository.getReviews(id)
+            res.status(HTTP_statusCode.OK).json({success: true, data})
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getTransactions = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const data = await this.userService.getTransactionService(id)
+            if(data.length > 0){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }else{
+                res.status(HTTP_statusCode.NotFound).json({success: false, message: 'No transaction found'})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getSkills = async(req: Request, res: Response)=>{
+        try {
+            const data = await UserRepository.getSkills()
+            res.status(HTTP_statusCode.OK).json({success: true, data})
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getSingleContracts = async(req: Request, res: Response)=>{
+        try {
+            const {id} = req.params
+            const contractId: any = id
+            const data = await UserRepository.getSingleContract(contractId)
+            res.status(HTTP_statusCode.OK).json({ success: true, data})
         } catch (error: any) {
             if (error instanceof AppError) {
                 res.status(error.statusCode).json({

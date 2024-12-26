@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import HTTP_statusCode from "../Enums/httpStatusCode";
 import { AdminService } from "../Services/adminServices";
 import { AdminRepository } from "../Repository/adminRepository";
+import AppError from "../utils/AppError";
 
 export class AdminController{
     private adminService: AdminService;
@@ -207,6 +208,165 @@ export class AdminController{
         }
     }
 
+    getContracts = async(req: Request, res: Response)=>{
+        try {
+            const data = await AdminRepository.getContratRepo()
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    createSkills = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,'this is the data in the body')
+            const {data} = req.body
+            console.log(data)
+            const result = await this.adminService.createSkillService(data) 
+            if(result ==  true){
+                res.status(HTTP_statusCode.OK).json({success: true, message: 'skill created successfully'})
+            }else{
+                res.status(HTTP_statusCode.TaskFailed).json({ success: false, message: 'Failed to create skill'})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getSkills = async(req: Request, res: Response)=>{
+        try {
+            const { page, limit } = req.query
+            const skillData = await AdminRepository.getSkills(page,limit)
+            res.status(HTTP_statusCode.OK).json({ success: true, skillData})
+            
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    blockUnblockSkill = async(req: Request, res: Response)=>{
+        try {
+            const {id, status} = req.body
+            const data = await this.adminService.blockUnblockSkillService(id,status)
+            console.log(data,'skill Data')
+            if(data.isBlocked == true){
+                res.status(HTTP_statusCode.OK).json({success: true, message:'skill blocked'})
+            }else{
+                res.status(HTTP_statusCode.OK).json({success: true, message:'skill unblocked'})
+
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getAllTransactions = async(req: Request, res: Response)=>{
+        try {
+            console.log('its here in the transactionn controller')
+            const data = await this.adminService.getTransactionService()
+            if(data.length > 0){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getDashboardData = async(req: Request, res: Response)=>{
+        try {
+            const data = await this.adminService.getDashboardDataService()
+            console.log(data,'this is the data we need to show in the dashboard')
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    getGraphData = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.params,'its hererer')
+            const {timeframe} = req.params
+            const data = await this.adminService.getGraphDataService(timeframe)
+            console.log(data,'this is the graph data ')
+            res.status(HTTP_statusCode.OK).json({success: true, data})
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
 }
 
 

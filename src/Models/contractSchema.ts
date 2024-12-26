@@ -112,7 +112,7 @@ const contractSchema = new Schema<IContract>({
     },
     status: {
         type: String,
-        enum: ['draft', 'active', 'initial_payment', 'completed', 'submitted', 'termination_requested', 'terminated'],
+        enum: ['draft', 'active', 'initial_payment', 'completed', 'submitted', 'termination_requested', 'termination_denied', 'terminated'],
         default: 'draft',
     },
     terminationReason: { 

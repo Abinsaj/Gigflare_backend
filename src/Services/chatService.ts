@@ -3,6 +3,8 @@ import Conversation from "../Models/conversationSchema"
 import Message from "../Models/messageSchema"
 import { getRecieverSocketId } from "../server"
 import {io} from '../server'
+import NotificationModel from "../Models/notificationSchema"
+import userModel from "../Models/userSchema"
 
 export class ChatService {
 
@@ -14,7 +16,7 @@ export class ChatService {
             }
             return conversation?.messages
         } catch (error: any) {
-            throw new Error(error.message || 'Couldnt getch the data')
+            throw new Error(error.message || 'Couldnt fetch the data')
         }
     }
 
@@ -37,7 +39,7 @@ export class ChatService {
 
     sendMessageService = async (sender: string, message: string, receiver: string) => {
         try { 
-         
+            console.log(sender,receiver,'these are the id we got herererrerer in the function')
             let conversation = await Conversation.findOne({
                 participants:{$all:[sender,receiver]}
             })
@@ -57,11 +59,19 @@ export class ChatService {
             if (newMessage) {
                 conversation.messages.push(newMessage._id as ObjectId)
             }
+            const userDetails = await userModel.findOne({_id: sender})
+            const messageNotification = await NotificationModel.create({
+                userId: receiver,
+                type: 'message',
+                message: `New message from ${userDetails?.name}`,
+                data: newMessage
+            })
 
             const receiverSocketId = getRecieverSocketId(receiver);
-          if(receiverSocketId){
-            io.to(receiverSocketId).emit('newMessage',newMessage)
-          }
+            if(receiverSocketId){
+                io.to(receiverSocketId).emit('newMessage',newMessage)
+                io.to(receiverSocketId).emit('notifications',messageNotification)
+            }
 
             await conversation.save()
             return newMessage
@@ -145,6 +155,13 @@ export class ChatService {
                 console.log('Creating a new conversation...');
                 conversation = new Conversation({ participants });
                 await conversation.save();
+
+                let recieverSocketId = getRecieverSocketId(receiver)
+
+                if(recieverSocketId){
+                    io.to(recieverSocketId).emit('conversation',conversation)
+                }
+
                 return conversation;
             }
     
@@ -162,8 +179,6 @@ export class ChatService {
             throw new Error(error.message || 'An unexpected error occurred');
         }
     };
-    
-    
     
 
     getFreelancerConversationService = async(id: string)=>{

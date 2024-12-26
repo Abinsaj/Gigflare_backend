@@ -11,7 +11,6 @@ import adminRouter from './Routes/adminRoutes';
 import chatRouter from './Routes/chatRoutes';
 import freelancerRouter from './Routes/freelancerRoutes';
 import bodyParser = require('body-parser');
-import formidable from 'express-formidable';
 import session = require('express-session');
 
 dotenv.config();
@@ -82,6 +81,7 @@ io.on('connect', (socket) => {
     console.log('Message received:', data);
     io.emit('message', data);
   });
+
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);

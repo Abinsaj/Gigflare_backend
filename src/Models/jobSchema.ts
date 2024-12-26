@@ -3,7 +3,7 @@ import mongoose, { Schema, model, Document, ObjectId, Mongoose, mongo } from "mo
 export interface IJob extends Document{
     title: string,
     description: string
-    skillsRequired: string[]
+    skillsRequired: ObjectId[]
     budget?: number
     category: ObjectId
     duration: string
@@ -32,14 +32,15 @@ const jobSchema = new Schema<IJob>({
         required : true
     },
     skillsRequired:[{
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Skill'
     }],
     budget:{
         type: Number
     },
     category:{
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category'
     },
     duration:{
         type: String

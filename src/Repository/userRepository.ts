@@ -1,4 +1,4 @@
-import e from "express";
+import e, { application } from "express";
 import { IUser } from "../Interfaces/common.interface";
 import FreelancerApplication from "../Models/applicationSchema";
 import jobModel, { IJob } from "../Models/jobSchema";
@@ -6,10 +6,15 @@ import userModel from "../Models/userSchema";
 import bcrypt from 'bcrypt'
 import CategorySchema from "../Models/categorySchema";
 import ProposalModel from "../Models/proposalSchema";
-import { ObjectId } from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import jobOfferModel from "../Models/jobOfferSchema";
 import ContractSchema from "../Models/contractSchema";
 import AppError from "../utils/AppError";
+import { getRecieverSocketId, io } from "../server";
+import NotificationModel from "../Models/notificationSchema";
+import HTTP_statusCode from "../Enums/httpStatusCode";
+import ReviewSchema from "../Models/reviewSchema";
+import SkillSchema from "../Models/skillSchema";
 
 
 export class UserRepository {
@@ -141,21 +146,25 @@ export class UserRepository {
 
     static async getUserInfo(_id: string){
         try {
-            const userData = await userModel.findOne({_id})  
-            
+            const userData = await userModel.findOne({_id:_id})  
             return userData
         } catch (error) {
             throw new Error('An unexpected error has occured')
         }
     }
 
-    static async getFreelancerDetails(){
+    static async getFreelancerDetails(id: string, page: number, limit: number){
         try {
-            const data = await FreelancerApplication.find({status:'accepted'})
+            const pageNumber = Math.max(1, page); 
+            const pageLimit = Math.max(1, limit);
+            const query = {status:'accepted',userId:{ $ne: id }}
+            const data = await FreelancerApplication.find(query).skip((pageNumber-1)* pageLimit).limit(Number(pageLimit)).populate('skills')
+            const totalCount = await FreelancerApplication.countDocuments(query)
+            const totalPages = Math.ceil(totalCount/limit)
             if(!data){
                 throw new Error('No data have been found')
             }
-            return data
+            return {data, totalPages}
         } catch (error: any) {
             throw new Error(error.message || "An unexpectd error has occured")
         }
@@ -260,11 +269,14 @@ export class UserRepository {
 
     static async getJobOffer(offerData: any,jobId: string, freelancerId: string, userId: string){
         try {
-            console.log(offerData,'the data we got here is')
             const data = await jobOfferModel.findOne({freelancer: freelancerId})
             if(data){
                 return {success: false}
             }else{
+
+                const freelancerData = await FreelancerApplication.findOne({_id:freelancerId})
+                const otherId = freelancerData?.userId
+
                 const data = {
                     clientId: userId,
                     freelancerId: freelancerId,
@@ -275,8 +287,29 @@ export class UserRepository {
                     upfrontAmount: offerData.upfrontAmount,
                     restAmount: offerData.completionAmount,
                     platformFee: offerData.platformFeeAmount,
+                    attachmentUrl:offerData.attachment
                 }
+
+                console.log(data,'4242424242424242424242424242424242424242424242424242424242424242424242')
                 const newData = await jobOfferModel.create(data)
+
+                const offerNotification = await NotificationModel.create({
+                    userId:otherId,
+                    type: 'offer',
+                    message:'You got an Job offer',
+                    data: {
+                        senderId: userId,
+                        receiverId: freelancerId,
+                    },
+                })
+
+                const recieverSocketId = getRecieverSocketId(otherId)
+                console.log(recieverSocketId,'Socket ID of the freelancer')
+                if(recieverSocketId){
+                    io.to(recieverSocketId).emit('notifications',offerNotification)
+                    io.to(recieverSocketId).emit('newOffer',offerNotification)
+                }
+
                  await  newData.save()
                  return {success:true}
                 
@@ -289,7 +322,12 @@ export class UserRepository {
 
     static async getContracts(clientId: string){
         try {
-            const data = await ContractSchema.find({clientId})
+            const data = await ContractSchema.find({
+                $or: [
+                    { clientId }, 
+                    { freelancerId: clientId }
+                ]
+            })
             .populate('freelancerId')
             .populate('clientId')
             .populate('jobId')
@@ -328,7 +366,7 @@ export class UserRepository {
 
     static async getSingleContract(id: ObjectId){
         try {
-            const data = await ContractSchema.findOne({_id:id})
+            const data = await ContractSchema.findOne({_id:id}).populate('jobId').populate('freelancerId').populate('clientId')
             console.log(data)
             return data
         } catch (error: any) {
@@ -336,6 +374,164 @@ export class UserRepository {
                 500,
                 error.message || 'Error fetching contract'
             )
+        }
+    }
+
+    static async getNotification(id: string){
+        try {
+            const notification = await NotificationModel.find({userId:id})
+            return notification
+        } catch (error: any) {
+            throw new AppError(
+                'FailedFetchNotificaiton',
+                500,
+                error.message || 'Error fetching Notification'
+            )
+        }
+    }
+
+    static async changeNotificationStaus(id: string, type: 'proposal' | 'message' | 'offer' | 'contract'){
+        try {
+            console.log(id,type,'we got the id and type here in repository')
+            let notification
+            if(type == 'proposal'){
+                notification = await NotificationModel.updateMany({userId:id, type: type},
+                    {$set: { isRead: true}}
+                )
+                const recieverSocketId = getRecieverSocketId(id)
+                const notif = await NotificationModel.find({userId: id})
+                if(recieverSocketId && notif){
+                    io.to(recieverSocketId).emit('notifications',notif)
+                }
+                return notification
+
+            }
+            if(type == 'offer'){
+                notification = await NotificationModel.updateMany({userId:id, type: type},
+                    {$set: { isRead: true}}
+                )
+                const recieverSocketId = getRecieverSocketId(id)
+                const notif = await NotificationModel.find({userId: id})
+                if(recieverSocketId && notif){
+                    io.to(recieverSocketId).emit('notifications',notif)
+                }
+                return notification
+            }
+        } catch (error: any) {
+            throw new AppError(
+                'FailedFetchNotificaiton',
+                500,
+                error.message || 'Error fetching Notification'
+            )
+        }
+    }
+
+    static async messageNotificationChange (sender: string, receiver: string){
+        try {
+            console.log(sender, receiver,'The ids')
+            
+            const notification = await NotificationModel.updateMany(
+                {
+                    userId: sender,
+                    type: 'message',
+                    'data.sender': new mongoose.Types.ObjectId(receiver),
+                    'data.receiver': new mongoose.Types.ObjectId(sender)
+                },
+                { $set: { isRead: true } }
+            );
+            console.log(notification,'The notification')
+            const recieverSocketId = getRecieverSocketId(sender)
+                const notif = await NotificationModel.find({userId: sender})
+                if(recieverSocketId && notif){
+                    io.to(recieverSocketId).emit('notifications',notif)
+                }
+            return notification
+        } catch (error: any) {
+            throw new AppError(
+                'FailedFetchNotificaiton',
+                500,
+                error.message || 'Error fetching Notification'
+            )
+        }
+    }
+
+    static async getWorkHistory(id: string){
+        try {
+            console.log(id,' here in repository')
+            const data = await ContractSchema.find({$or: [
+              { freelancerId: id },
+              { clientId: id },
+            ],
+            status: { $in: ['completed'] },
+          })
+            .populate('clientId') 
+            .populate('jobId') 
+            .lean();
+      
+            console.log(data,'the work history data')
+      
+            return data
+          } catch (error: any) {
+            throw new AppError('FailedUpdatingProfile',500,error.message || 'Failed to get work history')
+      
+          }
+    }
+
+    static async checkContract(userId: string, freelancerId: string){
+        try {
+            const contract = await ContractSchema.find({clientId: userId, freelancerId: freelancerId})
+            console.log(contract)
+            return contract
+        } catch (error: any) {
+            throw new AppError('FailedToFetchContract',HTTP_statusCode.InternalServerError, error.message || 'Failed to fetch contract details')
+        }
+    }
+
+    static async addRatingAndReview(data: {clientId: string, freelancerId: string, rating: Number, review: string}){
+        try {
+            const ratingReview = await ReviewSchema.create(data)
+            return ratingReview
+        } catch (error: any) {
+            throw new AppError('FailedToAddRatingReview',
+                 HTTP_statusCode.InternalServerError,
+                 error.message || 'Failed to add rating and review')
+        }
+    }
+
+    static async getReviews(id: string){
+        try {
+            const data = await ReviewSchema.find({freelancerId: id})
+            if(!data){
+                throw AppError.notFound('No rating have been found')
+            }else{
+                return data
+            }
+        } catch (error: any) {
+            throw new AppError('FailedFetchRatingReview',
+                HTTP_statusCode.InternalServerError,
+                error.message || 'Failed to get rating and review')
+        }
+    }
+
+    static async getSkills(){
+        try {
+            const skills = await SkillSchema.find().populate('category')
+            return skills
+        } catch (error: any) {
+            throw new AppError('FailedFetchSkills',
+                HTTP_statusCode.InternalServerError,
+                error.message || 'Failed to get rating and review')
+        }
+    }
+
+    static async getFreelancersList(id: string){
+        try {
+            const freelancers = await FreelancerApplication.find({status: 'accepted', userId: { $ne: id } }).populate('skills')
+            return freelancers
+        } catch (error: any) {
+            throw new AppError('FailedFetchSkills',
+                HTTP_statusCode.InternalServerError,
+                error.message || 'Failed to get rating and review')
         }
     }
     

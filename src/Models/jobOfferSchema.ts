@@ -21,6 +21,7 @@ import mongoose, { Schema, Document, ObjectId, model} from "mongoose";
     restAmount: number;
     platformFee: number;
     termsAccepted?: boolean;
+    attachmentUrl?: string;
     status?: 'pending' | 'accepted' | 'rejected';
   }
 
@@ -79,6 +80,9 @@ import mongoose, { Schema, Document, ObjectId, model} from "mongoose";
       termsAccepted: {
         type: Boolean,
         default: false
+      },
+      attachmentUrl:{
+        type: String
       },
       status: {
         type: String,

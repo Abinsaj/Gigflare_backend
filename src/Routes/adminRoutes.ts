@@ -22,5 +22,12 @@ router.put('/blockcategory/:categoryName',verifyAdminToken,adminController.block
 router.get('/getFreelancerDetails/:freelancerId',verifyAdminToken,adminController.getFreelancerDetails)
 router.get('/joblist',verifyAdminToken,adminController.getJobList)
 router.post('/activatejob',verifyAdminToken,adminController.activateJob)
+router.get('/getcontracts',verifyAdminToken,adminController.getContracts)
+router.post('/skills',verifyAdminToken,adminController.createSkills)
+router.get('/getskills',verifyAdminToken,adminController.getSkills)
+router.put('/blockunblockskill',verifyAdminToken,adminController.blockUnblockSkill)
+router.get('/getalltransactions',verifyAdminToken,adminController.getAllTransactions)
+router.get('/getdashboarddata',verifyAdminToken,adminController.getDashboardData)
+router.get('/getgraphdata/:timeframe', verifyAdminToken,adminController.getGraphData)
 
 export default router

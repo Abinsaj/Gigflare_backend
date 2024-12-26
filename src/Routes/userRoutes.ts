@@ -2,8 +2,12 @@ import { Router } from "express";
 import { UserController } from "../Controllers/userController";
 import { UserService } from "../Services/userServices";
 import verifyToken from "../Middleware/userMiddleware";
+import multer from "multer";
 
 const router = Router()
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage})
 
 const userServive = new UserService();
 const userController = new UserController(userServive);
@@ -26,12 +30,20 @@ router.get('/getcategory',verifyToken,userController.getCategoryList)
 router.get('/getproposals/:id',verifyToken, userController.getProposals)
 router.put('/approveproposal/:id',verifyToken, userController.approveProposal)
 router.post('/userlogout',userController.userLogout)
-router.post('/sendoffer',userController.sendJobOffer)
+router.post('/sendoffer',upload.single('attachment'),userController.sendJobOffer)
 router.get('/getcontracts/:id',verifyToken,userController.getContracts)
 router.post('/signcontract',verifyToken,userController.signContract)
 router.post('/create-checkout-session',userController.createCheckoutSession)
 router.all('/confirmpayment',userController.confirmPayment)
-
+router.get('/notification/:id',verifyToken,userController.getUserNotification)
+router.put('/viewedproposalnotification/:id',verifyToken,userController.viewedNotification)
+router.put('/viewmessagenotification',verifyToken,userController.viewedMessageNotification)
+router.get('/getworkhistory/:id',verifyToken,userController.getWorkHistory)
+router.post('/addratingreview',verifyToken, userController.addRatingAndReview)
+router.get('/getReview/:id',verifyToken,userController.getRatingAndReview)
+router.get('/gettransactions/:id',verifyToken,userController.getTransactions)
+router.get('/getskills',verifyToken,userController.getSkills)
+router.get('/getsinglecontract/:id',verifyToken, userController.getSingleContracts)
 
 
 export default router;
