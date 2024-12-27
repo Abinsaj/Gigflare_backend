@@ -25,27 +25,26 @@ const server = createServer(app);
 
 export const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'PUT'],
+    origin: 'https://api.gigflare.online',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   },
 });
 
-app.use(morgan('dev'));
-app.use(cookieParser());
-
-app.use(session({
-  secret:'qwert12345',
-  resave: false,
-  saveUninitialized: false,
-  cookie:{
-    httpOnly: true,
-    maxAge:30000,
-  }
-}))
+const allowedOrigins = [
+  'https://api.gigflare.online',
+  'http://localhost:3000', 
+];
 
 const corsOptions = {
-  origin: 'http://localhost:3000',
+  origin: (origin: any, callback: any) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true); 
+    } else {
+      callback(new Error('Not allowed by CORS')); 
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
 };
 
