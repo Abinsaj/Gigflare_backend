@@ -9,8 +9,9 @@ const secret_key = process.env.JWT_SECRET_KEY as string;
 
 const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        console.log(req.cookies,'this is the cookies')
         const accessToken: string = req.cookies.UserAccessToken;
-        console.log(accessToken)
+        console.log(accessToken, ' this is the user access token')
         if (accessToken) {
             jwt.verify(accessToken, secret_key, async (err: any, decoded: any) => {
                 if (err) { 

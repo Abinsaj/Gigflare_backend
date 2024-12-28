@@ -770,4 +770,36 @@ export class UserService {
         }
     }
 
+    updateProfileService = async (name: string, phone: string, id: string) => {
+        try {
+
+            const userInfo = await UserRepository.getUserInfo(id);
+            if (userInfo) {
+
+                userInfo.name = name;
+                userInfo.phone = phone;
+    
+            
+                const updatedUser = await UserRepository.updateUserInfo(id, userInfo); 
+                if (updatedUser) {
+                    return updatedUser;
+                } else {
+                    throw new Error('Failed to update user information');
+                }
+            } else {
+                throw new Error('User not found');
+            }
+        } catch (error: any) {
+            console.error(error);
+            if (error instanceof AppError) {
+                throw error
+            } else {
+                throw new AppError('FailedToGetTransactions ',
+                    500,
+                    error.message || 'Unexpected Error'
+                )
+            }
+        }
+    };
+
 }

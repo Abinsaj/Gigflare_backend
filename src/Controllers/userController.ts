@@ -47,8 +47,10 @@ export class UserController {
 
     verifyLogin = async (req: Request, res: Response): Promise<any> => {
         try {
+            console.log(req.body,' this the request bidy')
             const data = req.body
             const result = await this.userService.login(data.email, data.password);
+            console.log(result,'this is the result we got herer in login controller')
             if (!result) {
                 return res.status(HTTP_statusCode.Unauthorized).json({success:false, message: "Invalid login credentials" })
             }
@@ -615,6 +617,31 @@ export class UserController {
             const contractId: any = id
             const data = await UserRepository.getSingleContract(contractId)
             res.status(HTTP_statusCode.OK).json({ success: true, data})
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({
+                    success: false, 
+                    message: error.message
+                });
+            } else {
+                res.status(HTTP_statusCode.InternalServerError).json({
+                    success: false, 
+                    message: error.message || 'Internal Server Error'
+                });
+            }
+        }
+    }
+
+    updatePriofile = async(req: Request, res: Response)=>{
+        try {
+            console.log(req.body,' this is the req body')
+            const {name, phone} = req.body.data
+            const id = req.body.id
+            console.log(id,'this si hte id')
+            const data = await this.userService.updateProfileService(name, phone, id)
+            if(data){
+                res.status(HTTP_statusCode.OK).json({success: true, data})
+            }
         } catch (error: any) {
             if (error instanceof AppError) {
                 res.status(error.statusCode).json({

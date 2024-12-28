@@ -534,5 +534,27 @@ export class UserRepository {
                 error.message || 'Failed to get rating and review')
         }
     }
+
+    static async updateUserInfo (id: string, updatedData: { name?: string; phone?: string }){
+        try {
+
+            const updatedUser = await userModel.findByIdAndUpdate(
+                id,
+                { $set: updatedData }, 
+                { new: true }
+            );
+    
+            if (!updatedUser) {
+                throw AppError.notFound('User not found');
+            }
+    
+            return updatedUser;
+        } catch (error: any) {
+            throw new AppError('FailedUpdateProfile',
+                HTTP_statusCode.InternalServerError,
+                error.message || 'Failed to update profile')
+        
+        }
+    };
     
 }

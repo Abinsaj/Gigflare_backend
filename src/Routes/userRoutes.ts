@@ -44,6 +44,7 @@ router.get('/getReview/:id',verifyToken,userController.getRatingAndReview)
 router.get('/gettransactions/:id',verifyToken,userController.getTransactions)
 router.get('/getskills',verifyToken,userController.getSkills)
 router.get('/getsinglecontract/:id',verifyToken, userController.getSingleContracts)
+router.post('/updateprofile',verifyToken,userController.updatePriofile)
 
 
 export default router;

@@ -188,7 +188,7 @@ export class FreelancerService {
                         const createProposal = await FreelancerRepository.createJobProposal(proposalData)
 
                         const proposalId = createProposal._id as ObjectId
-                        jobData.proposals?.push(proposalId)
+                        jobData.proposals?.push(freelancerId as unknown as ObjectId)
                         await jobData.save()
 
                         const proposalNotification = await NotificationModel.create({
