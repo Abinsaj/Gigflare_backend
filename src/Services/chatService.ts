@@ -22,7 +22,6 @@ export class ChatService {
 
     getFreelancerMessageService = async (sender: string, receiver: string) => {
         try {
-            console.log(sender,'.......', receiver)
             const conversation = await Conversation.findOne({
                 sender:sender,
                 receiver:receiver
@@ -30,7 +29,6 @@ export class ChatService {
             if (!conversation) {
                 return []
             }
-            console.log(conversation)
             return conversation?.messages
         } catch (error: any) {
             throw new Error(error.message || 'Couldnt fetch the data')
@@ -39,7 +37,6 @@ export class ChatService {
 
     sendMessageService = async (sender: string, message: string, receiver: string) => {
         try { 
-            console.log(sender,receiver,'these are the id we got herererrerer in the function')
             let conversation = await Conversation.findOne({
                 participants:{$all:[sender,receiver]}
             })
@@ -83,7 +80,6 @@ export class ChatService {
 
     sendFreelancerMessageService = async (receiver: string, message: string, sender: string) => {
         try {
-          console.log(receiver, sender, 'this is what we got here');
           
           let conversation = await Conversation.findOneAndUpdate(
             {
@@ -126,14 +122,12 @@ export class ChatService {
 
     getConversationService = async (id: string) => {
         try {
-            console.log(id,'this is the id')
             const conversations = await Conversation.find({
                 participants: { $in: [id] }
             })
                 .populate('participants')
                 .sort({ updatedAt: -1 });
 
-                console.log(conversations,'this is the conversations')
             return conversations;
         } catch (error: any) {
             throw new Error(error.message || 'An unexpected error has occurred');
@@ -145,14 +139,11 @@ export class ChatService {
         try {
             const participants = [sender, receiver].sort(); 
     
-            console.log(participants, 'this is the sorted ids of user and freelancer');
-    
             let conversation = await Conversation.findOne({
                 participants,
             }).populate('participants');
     
             if (!conversation) {
-                console.log('Creating a new conversation...');
                 conversation = new Conversation({ participants });
                 await conversation.save();
 
@@ -183,7 +174,6 @@ export class ChatService {
 
     getFreelancerConversationService = async(id: string)=>{
         try {
-            console.log(id,'this is the id')
             const conversations = await Conversation.find({ receiver: id })
                 .populate('sender')
                 .populate('receiver')

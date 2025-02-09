@@ -1,53 +1,6 @@
 import mongoose,{Schema, model, ObjectId, Document} from 'mongoose'
+import { IContract } from '../Interfaces/common.interface';
 
-export interface ISigningDetails{
-    signed:Boolean,
-    signedAt: Date
-    signature: String,
-    publicKey: String,
-
-}
-
-export interface IContract extends Document{
-    freelancerId: ObjectId;
-    clientId: ObjectId;
-    jobId: ObjectId;
-    offerId: ObjectId;
-    totalBudget: number;
-    paymentStatus: 'unpaid' | 'partially_paid' | 'paid';
-    startDate: Date;
-    endDate: Date;
-    initialPayment:number;
-    remainingPayment: number;
-    platformFee: number;
-    totalEarnings: number;
-    terms: [];
-    isTermsAccepted: boolean;
-    status: 'draft'| 'initial_payment' | 'active' | 'completed' | 'submitted' | 'termination_requested' | 'terminated';
-    terminationReason?: string;
-    terminationRequestedBy?: 'client' | 'freelancer';
-    refundAmount?: number;
-    signedByClient: ISigningDetails;
-    signedByFreelancer: ISigningDetails;
-    contractHash: string;
-}
-
-const signingDetailsSchema = new Schema<ISigningDetails>({
-    signed: {
-        type: Boolean,
-        default: false,
-    },
-    signedAt: {
-        type: Date,
-    },
-    signature: {
-        type: String,
-    },
-    publicKey: {
-        type: String,
-    },
-    
-})
 
 const contractSchema = new Schema<IContract>({
     freelancerId: { 
@@ -131,12 +84,34 @@ const contractSchema = new Schema<IContract>({
         default: 0 
     },
     signedByClient: { 
-        type: signingDetailsSchema, 
-        default: { signed: false } 
+        signed: {
+            type: Boolean,
+            default: false,
+        },
+        signedAt: {
+            type: Date,
+        },
+        signature: {
+            type: String,
+        },
+        publicKey: {
+            type: String,
+        },
     },
     signedByFreelancer: { 
-        type: signingDetailsSchema, 
-        default: { signed: false } 
+        signed: {
+            type: Boolean,
+            default: false,
+        },
+        signedAt: {
+            type: Date,
+        },
+        signature: {
+            type: String,
+        },
+        publicKey: {
+            type: String,
+        },
     },
   },
   { timestamps: true }

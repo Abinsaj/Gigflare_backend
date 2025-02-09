@@ -1,24 +1,157 @@
 import { application } from "express";
 import CategorySchema from "../Models/categorySchema";
-import { ObjectId } from "mongoose";
+import { Model, ObjectId } from "mongoose";
 import FreelancerApplication from "../Models/applicationSchema";
 import jobModel from "../Models/jobSchema";
 import ContractSchema from "../Models/contractSchema";
 import AppError from "../utils/AppError";
 import SkillSchema from "../Models/skillSchema";
+import IAdminRepository from "../Interfaces/AdminInterface/admin.repository.interface";
+import IJob, { ICategory, IContract, IFreelancer, ISkill, IUser } from "../Interfaces/common.interface";
+import { BaseRepository } from "./baseRepository";
+import sentApplicationMail from "../Config/rejectionEmailConfig";
 
-export class AdminRepository {
-    static async createCatregory(name: string, description: string) {
+export class AdminRepository implements IAdminRepository {
+
+    private userRepo: BaseRepository<IUser>
+    private freelancerRepo: BaseRepository<IFreelancer>
+    private categoryRepo: BaseRepository<ICategory>
+    private jobRepo: BaseRepository<IJob>
+    private contractRepo: BaseRepository<IContract>
+    private skillRepo: BaseRepository<ISkill>
+
+    constructor(
+        userModel: Model<IUser>,
+        FreelancerApplication: Model<IFreelancer>,
+        catergoryModel: Model<ICategory>,
+        jobModel: Model<IJob>,
+        contractModel: Model<IContract>,
+        skillModel: Model<ISkill>
+    ) {
+        this.userRepo = new BaseRepository(userModel)
+        this.freelancerRepo = new BaseRepository(FreelancerApplication)
+        this.categoryRepo = new BaseRepository(catergoryModel)
+        this.jobRepo = new BaseRepository(jobModel)
+        this.contractRepo = new BaseRepository(contractModel)
+        this.skillRepo = new BaseRepository(skillModel)
+    }
+
+    getUsers = async (page: any, limit: any) => {
+        try {
+            const limitValue = Number(limit)
+            const pages = Number(page)
+            const skip = (pages -1 )*limitValue
+            const user = await this.userRepo.findAll({}, limitValue, skip)
+            const totalItems = await this.userRepo.countDoc()
+            const totalPages = Math.ceil(totalItems / limit)
+            if (!user) {
+                throw AppError.notFound('No user have been found')
+            }
+            return {user, totalPages}
+        } catch (error: any) {
+            throw new AppError(
+                'FailedFetchUsers',
+                500,
+                error.message || 'Error fetching Notification'
+            )
+        }
+    }
+
+    getFreelancerApplications = async (page: any, limit: any) => {
+        try {
+            const pageNumber = Number(page);  
+            const limitValue = Number(limit) ;
+            const skip = (pageNumber - 1) * limitValue
+            const freelancer = await this.freelancerRepo.findAll({}, limitValue, skip)
+            const totalItems = await this.freelancerRepo.countDoc()
+            const totalPages = Math.ceil(totalItems / limit);
+            if (!freelancer) {
+                throw AppError.conflict('No freelancers have found')
+            }
+
+            return { freelancer, totalPages }
+        } catch (error) {
+            throw error
+        }
+    }
+
+    updateStatus = async (applicationId: string, status: string) => {
+        try {
+            const updatedApplication = await this.freelancerRepo.updateAndReturn(
+                { applicationId },
+                { $set: { status: status } },
+                { new: true }
+            );
+            if (!updatedApplication) {
+                return false;
+            }
+
+
+            const user = await this.userRepo.find({ email: updatedApplication.email });
+
+            if (user) {
+                if (updatedApplication.status === 'accepted') {
+                    const mailresult = await sentApplicationMail(user.email, 'accepted')
+                    user.isFreelancer = true;
+
+                    user.freelancerCredentials = {
+                        email: updatedApplication.email,
+                        uniqueID: updatedApplication.applicationId
+                    };
+                    await user.save();
+                } else {
+                    await sentApplicationMail(user.email, 'rejected')
+                }
+            }
+            return updatedApplication
+        } catch (error: any) {
+            console.error('Error in updateStatus:', error);
+            throw new Error(error);
+        }
+    }
+
+    blockFreelancer = async (email: string, isBlocked: boolean) => {
+        try {
+            const user = await this.userRepo.find({ email })
+            if (!user) {
+                throw new Error('no user have found')
+            } else {
+                user.isBlocked = isBlocked;
+                await user.save()
+                return true
+            }
+
+        } catch (error: any) {
+            throw new Error(error)
+        }
+    }
+
+    blockUser = async(email: string, isBlocked: boolean) => {
+        try {
+            const user = await this.userRepo.find({ email })
+            if (!user) {
+                throw new Error('no user have found')
+            } else {
+                user.isBlocked = isBlocked;
+                await user.save()
+                return true
+            }
+        } catch (error: any) {
+            throw new Error(error.message)
+        }
+    }
+
+    createCatregory = async(name: string, description: string) => {
         try {
 
-            const category = await CategorySchema.findOne({
+            const category = await this.categoryRepo.find({
                 name: { $regex: new RegExp(`${name}$`, 'i') }
             })
 
             if (category) {
                 throw new Error('Category Already exist')
             }
-            const newCategory = CategorySchema.create({
+            const newCategory = this.categoryRepo.create({
                 name: name,
                 description: description
             })
@@ -28,9 +161,9 @@ export class AdminRepository {
         }
     }
 
-    static async getCategories() {
+    getCategories = async() =>{
         try {
-            const data = await CategorySchema.find()
+            const data = await this.categoryRepo.findAll({},0,0)
             if (!data) {
                 throw new Error('No category data found')
             }
@@ -40,7 +173,7 @@ export class AdminRepository {
         }
     }
 
-    static async blockUnblockCategory(name: string, status: boolean | undefined) {
+    blockUnblockCategory = async(name: string, status: boolean | undefined) =>{
         try {
             const data = await CategorySchema.findOneAndUpdate(
                 { name },
@@ -58,9 +191,8 @@ export class AdminRepository {
         }
     }
 
-    static async removeCategory(name: string) {
+    removeCategory = async(name: string) =>{
         try {
-            console.log(name, 'this is the name')
             const category = await CategorySchema.findOneAndDelete({ name })
             return true
         } catch (error) {
@@ -68,20 +200,25 @@ export class AdminRepository {
         }
     }
 
-    static async getFreelancers() {
+    getFreelancers = async (page: any,limit: any) => {
         try {
-            const freelancer = await FreelancerApplication.find({ status: 'accepted' })
-            return freelancer
+            const pageNumber = Number(page);  
+            const limitValue = Number(limit) ;
+            const skip = (pageNumber - 1) * limitValue
+            const freelancer = await this.freelancerRepo.findAll({ status: 'accepted' },limitValue,skip)
+            const totalItems = await this.freelancerRepo.countDoc()
+            const totalPages = Math.ceil(totalItems / limit)
+            return {freelancer,totalPages}
         } catch (error) {
             console.log(error)
         }
     }
 
-    static async getJobs() {
+    getJobs = async() =>{
         try {
-            const jobData = await jobModel.find({}).populate('skillsRequired').populate('category')
+            const jobData = await this.jobRepo.findAll({},0,0,['skillsRequired','category'])
             if (!jobData) {
-                return { message: "No data found" }
+                throw AppError.notFound('No data have found')
             }
             return jobData
         } catch (error) {
@@ -89,31 +226,31 @@ export class AdminRepository {
         }
     }
 
-    static async blockJob(_id: string, status: string | 'block' | 'unblock') {
-        try {
-            let updateData
-            if (status == 'block') {
-                updateData = await jobModel.findByIdAndUpdate({ _id },
-                    {
-                        isBlocked: true
-                    }
-                )
-            } else {
-                updateData = await jobModel.findByIdAndUpdate({ _id },
-                    {
-                        isBlocked: false
-                    }
-                )
-            }
-            return updateData
-        } catch (error) {
-            console.log(error)
-        }
-    }
+    // static async blockJob(_id: string, status: string | 'block' | 'unblock') {
+    //     try {
+    //         let updateData
+    //         if (status == 'block') {
+    //             updateData = await jobModel.findByIdAndUpdate({ _id },
+    //                 {
+    //                     isBlocked: true
+    //                 }
+    //             )
+    //         } else {
+    //             updateData = await jobModel.findByIdAndUpdate({ _id },
+    //                 {
+    //                     isBlocked: false
+    //                 }
+    //             )
+    //         }
+    //         return updateData
+    //     } catch (error) {
+    //         console.log(error)
+    //     }
+    // }
 
-    static async activateJob(_id: string) {
+    activateJob = async(_id: string) =>{
         try {
-            const updatedData = await jobModel.findByIdAndUpdate({ _id },
+            const updatedData = await this.jobRepo.updateAndReturn({ _id },
                 {
                     isActive: true
                 }
@@ -124,12 +261,9 @@ export class AdminRepository {
         }
     }
 
-    static async getContratRepo() {
+    getContractRepo = async() =>{
         try {
-            const contracts = await ContractSchema.find({})
-                .populate('freelancerId')
-                .populate('clientId')
-                .populate('jobId')
+            const contracts = await this.contractRepo.findAll({},0,0,['freelancerId','clientId','jobId'])
             if (contracts == null) {
                 throw AppError.notFound('No contract have been made till')
             }
@@ -145,22 +279,19 @@ export class AdminRepository {
         }
     }
 
-    static async createSkills(data: any) {
+    createSkills = async(data: any)=> {
         try {
-            console.log(data, 'Data in repository')
-            const skill = await SkillSchema.findOne({
+            const skill = await this.skillRepo.find({
                 name: { $regex: new RegExp(`${data.name}$`, 'i') }
             })
             if (skill) {
                 throw AppError.conflict('Skill already exists')
             }
-            console.log('this is hereererrereerereeeereer')
-            const newSkill = await SkillSchema.create({
+            const newSkill = await this.skillRepo.create({
                 name: data.name,
                 category: data.category,
                 description: data.description,
             })
-            console
             return newSkill;
         } catch (error: any) {
             console.log(error)
@@ -174,14 +305,14 @@ export class AdminRepository {
         }
     }
 
-    static async getSkills(page: any, limit: any) {
+    getSkills = async(page: any, limit: any) =>{
         try {
-            const data = await SkillSchema.find().skip((page-1)*limit).limit(Number(limit)).populate('category')
+            const skip = (page-1)*limit
+            const data = await this.skillRepo.findAll({},skip,limit,['category'])
 
-            const totalItems = await SkillSchema.countDocuments();
+            const totalItems = await this.skillRepo.countDoc();
             const totalPages = Math.ceil(totalItems / limit);
-            console.log(totalPages)
-        
+
             if (!data) {
                 throw AppError.notFound('No skills have been found')
             }
@@ -194,9 +325,9 @@ export class AdminRepository {
         }
     }
 
-    static async blockUnblockSkills(id: string, status: boolean | undefined) {
+    blockUnblockSkills = async(id: string, status: boolean | undefined)=> {
         try {
-            const updatedData = await SkillSchema.findOneAndUpdate(
+            const updatedData = await this.skillRepo.updateAndReturn(
                 { _id: id },
                 {
                     $set: { isBlocked: status }
@@ -218,10 +349,9 @@ export class AdminRepository {
         }
     }
 
-    static async getGraphDataFromDB(startDate: Date, endDate: Date, timeframe: "MONTHLY" | "WEEKLY" | "YEARLY") {
+    getGraphDataFromDB = async(startDate: Date, endDate: Date, timeframe: "MONTHLY" | "WEEKLY" | "YEARLY")=> {
         try {
 
-            console.log(startDate, endDate,'this is the start and end date')
             const groupByField =
                 timeframe === 'WEEKLY'
                     ? { $isoWeek: '$createdAt' }
@@ -245,7 +375,6 @@ export class AdminRepository {
                                 $sort: { _id: 1 }, 
                             },
                         ]);
-                        console.log(graphData)
                         return graphData.map(item => ({
                             label: item._id, 
                             totalIncome: item.totalIncome,

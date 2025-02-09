@@ -1,5 +1,6 @@
 import { NumValues } from "aws-sdk/clients/amplifyuibuilder";
 import mongoose, { Schema, Document, ObjectId, model} from "mongoose";
+import { IJobOffer } from "../Interfaces/common.interface";
 
   
   // export interface IMilestone {
@@ -10,20 +11,7 @@ import mongoose, { Schema, Document, ObjectId, model} from "mongoose";
   //   amount: number; 
   // }
 
-  export interface IJobOffer extends Document {
-    clientId:ObjectId;
-    freelancerId: ObjectId; 
-    jobId: ObjectId; 
-    budget: number;
-    fromDate: Date;
-    toDate: Date;
-    upfrontAmount: number;
-    restAmount: number;
-    platformFee: number;
-    termsAccepted?: boolean;
-    attachmentUrl?: string;
-    status?: 'pending' | 'accepted' | 'rejected';
-  }
+
 
   // const milestoneSchema = new Schema({
   //   title: { type: String, required: true },
@@ -34,7 +22,7 @@ import mongoose, { Schema, Document, ObjectId, model} from "mongoose";
   // }, { _id: false });
 
 
-  const jobOfferSchema = new Schema({
+  const jobOfferSchema = new Schema<IJobOffer>({
     clientId:{
       type:Schema.Types.ObjectId,
       ref: 'User'

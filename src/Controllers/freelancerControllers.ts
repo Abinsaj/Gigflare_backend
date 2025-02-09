@@ -5,10 +5,11 @@ import { FreelancerRepository } from "../Repository/freelancerRepository";
 import { HttpStatusCode } from "axios";
 import AppError from "../utils/AppError";
 import { UserRepository } from "../Repository/userRepository";
+import IFreelancerService from "../Interfaces/FreelancerInterface/freelancer.service.interface";
 
 
 export class FreelancerController {
-    private freelancerService: FreelancerService
+    private freelancerService: IFreelancerService
     constructor(freelancerService: FreelancerService) {
         this.freelancerService = freelancerService
     }
@@ -69,11 +70,8 @@ export class FreelancerController {
 
     getSingleDetails = async(req: Request, res: Response)=>{
         try {
-            console.log('its here')
             const {id} = req.params
-            console.log(id)
             const data = await this.freelancerService.getSingleDetailService(id)
-            console.log(data,'this is the data , i think the id will be here')
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error: any) {
             res.status(HTTP_statusCode.InternalServerError).json(error.message)
@@ -83,8 +81,7 @@ export class FreelancerController {
     getJobDetails = async(req: Request, res: Response)=>{
         try {
             const {id} = req.params
-            console.log(id,'this is the id we got')
-            const data = await FreelancerRepository.getJobs(id)
+            const data = await this.freelancerService.getJobsService(id)
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json('Internal server Error')
@@ -104,7 +101,6 @@ export class FreelancerController {
     getProposals = async(req: Request, res: Response)=>{
         try {
             const {id} = req.params;
-            console.log(id,'the id we got in the freelancer controller')
             const data = await this.freelancerService.getProposalsService(id)
             res.status(HttpStatusCode.Ok).json(data)
         } catch (error) {
@@ -115,8 +111,7 @@ export class FreelancerController {
     getJobOffers = async(req: Request, res: Response )=>{
         try {
             const {id} = req.params;
-            const data = await FreelancerRepository.getJobOfferData(id)
-            console.log(data,' we got the data here in controller')
+            const data = await this.freelancerService.getJobOfferDataService(id)
             if(data !== null){
                 res.status(HTTP_statusCode.OK).json(data)
             }
@@ -127,7 +122,6 @@ export class FreelancerController {
 
     acceptRejectOffer = async(req: Request, res: Response)=>{
         try {
-            console.log('Data from Frontend', req.body)
             const {data} = req.body
             const result = await this.freelancerService.acceptOfferService(data)
             if(result){
@@ -170,7 +164,6 @@ export class FreelancerController {
 
     signContract = async(req: Request, res: Response)=>{
         try {
-            console.log('its here', req.body)
             const {hash, contractId, freelancerId} = req.body
             const result = await this.freelancerService.signContractService(hash, contractId, freelancerId)
             if(result.success){
@@ -243,7 +236,7 @@ export class FreelancerController {
     getNotification = async(req: Request, res: Response)=>{
         try {
             const {id} = req.params
-            const result = await FreelancerRepository.getFreelancerNotification(id)
+            const result = await this.freelancerService.getFreelancerNotificationService(id)
             if(result){
                 res.status(HTTP_statusCode.OK).json({success: true, result})
             }else{
@@ -266,17 +259,13 @@ export class FreelancerController {
 
     updateProfile = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'here in controller')
             const { id } = req.params;
             const data = req.body
             const photo= req.file
-            console.log(id,data,photo, 'data from the frontend')
 
             if (photo) {
-                console.log('Photo uploaded:', photo.originalname);
                 data.photo = photo;
             } else {
-                console.log('No new photo uploaded, existing photo will be retained');
                 delete data.photo;
             }
             data.language = JSON.parse(data.language)
@@ -287,7 +276,6 @@ export class FreelancerController {
                 res.status(HTTP_statusCode.OK).json({success: true, data: result, message: 'Profile updated successfully'})
             }
         } catch (error: any) {
-            console.log(error,'this is the error')
             if (error instanceof AppError) {
                 res.status(error.statusCode).json({
                     success: false, 
@@ -304,9 +292,7 @@ export class FreelancerController {
 
     getWorkHistory = async(req: Request, res: Response)=>{
         try {
-            console.log('here in get history controller')
             const {id} = req.params
-            console.log(id,' we got the id too')
             const data = await this.freelancerService.getWorkHistoryService(id)
             if(!data){
                 res.status(HTTP_statusCode.NotFound).json({success: false})
@@ -314,7 +300,6 @@ export class FreelancerController {
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }
         } catch (error: any) {
-            console.log(error,'this is the error')
             if (error instanceof AppError) {
                 res.status(error.statusCode).json({
                     success: false, 
@@ -332,7 +317,7 @@ export class FreelancerController {
     getSkillList = async(req: Request, res: Response)=>{
         try {
             const {id} = req.params
-            const data = await FreelancerRepository.getSkills(id)
+            const data = await this.freelancerService.getSkillsService(id)
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data: data})
             }else{
@@ -356,7 +341,6 @@ export class FreelancerController {
     getFilteredData = async (req: Request, res: Response) => {
         try {
           const { userId, category, experience, duration, startDate, endDate, query }: any = req.query;
-      
           const filter: any = { createdBy: { $ne: userId } };
       
           if (startDate && endDate) {
@@ -374,8 +358,7 @@ export class FreelancerController {
             filter.title = {$regex: query, $options: 'i'}
           }
       
-          const data = await FreelancerRepository.getFilteredJob(filter);
-          console.log(data,'this is the data we got here for search and filter')
+          const data = await this.freelancerService.getFilteredJobService(filter);
           res.status(HTTP_statusCode.OK).json({ success: true, data });
         } catch (error: any) {
           if (error instanceof AppError) {
@@ -397,7 +380,6 @@ export class FreelancerController {
         try {
             const {id} = req.params
             const data = await this.freelancerService.getDashboardDataService(id)
-            console.log(data,'Freelancer Dashboard data')
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }
@@ -418,10 +400,8 @@ export class FreelancerController {
 
     getRatingReview = async(req: Request, res: Response)=>{
         try {
-            console.log('hi its hereerererereererer')
             const {id} = req.params;
-            console.log(id,'this is the freelancer id we got')
-            const data = await FreelancerRepository.getReviews(id)
+            const data = await this.freelancerService.getReviews(id)
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }else{

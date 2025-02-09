@@ -3,13 +3,36 @@ import { UserController } from "../Controllers/userController";
 import { UserService } from "../Services/userServices";
 import verifyToken from "../Middleware/userMiddleware";
 import multer from "multer";
+import { UserRepository } from "../Repository/userRepository";
+import userModel from "../Models/userSchema";
+import jobModel from "../Models/jobSchema";
+import FreelancerApplication from "../Models/applicationSchema";
+import CategorySchema from "../Models/categorySchema";
+import ProposalModel from "../Models/proposalSchema";
+import NotificationModel from "../Models/notificationSchema";
+import ContractSchema from "../Models/contractSchema";
+import ReviewSchema from "../Models/reviewSchema";
+import SkillSchema from "../Models/skillSchema";
+import jobOfferModel from "../Models/jobOfferSchema";
 
 const router = Router()
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage})
 
-const userServive = new UserService();
+const userRepository = new UserRepository(
+    userModel,
+    jobModel,
+    FreelancerApplication,
+    CategorySchema,
+    ProposalModel,
+    NotificationModel,
+    ContractSchema,
+    ReviewSchema,   
+    SkillSchema,
+    jobOfferModel
+);
+const userServive = new UserService(userRepository);
 const userController = new UserController(userServive);
 
 router.post('/register',userController.createUser);
@@ -25,7 +48,7 @@ router.get('/userInfo/:id',verifyToken,userController.getUserInfo)
 router.get('/getfreelancers',verifyToken,userController.getFreelancerInfo)
 router.put('/changePassword',verifyToken,userController.userChangePassword)
 router.post('/google',verifyToken,userController.googleSignIn)
-router.get('/getsinglejob/:id',verifyToken,userController.getSigleJob)
+router.get('/getsinglejob',verifyToken,userController.getSigleJob)
 router.get('/getcategory',verifyToken,userController.getCategoryList)
 router.get('/getproposals/:id',verifyToken, userController.getProposals)
 router.put('/approveproposal/:id',verifyToken, userController.approveProposal)

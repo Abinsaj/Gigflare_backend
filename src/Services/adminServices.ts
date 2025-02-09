@@ -6,8 +6,11 @@ import { AdminRepository } from "../Repository/adminRepository";
 import { AwsConfig } from "../Config/awsFileConfig";
 import AppError from "../utils/AppError";
 import Stripe from "stripe";
-import { IJob } from "../Models/jobSchema";
-
+import IJob from "../Interfaces/common.interface"
+import IAdminService from "../Interfaces/AdminInterface/admin.service.interface";
+import IAdminRepository from "../Interfaces/AdminInterface/admin.repository.interface";
+import { IFreelancerRepository } from "../Interfaces/FreelancerInterface/freelancer.repository.interface";
+import { AnyBulkWriteOperation } from "mongoose";
 
 require('dotenv').config()
 
@@ -16,7 +19,19 @@ const adminPassword = process.env.ADMIN_PASSWORD
 const aws = new AwsConfig()
 const stripe = new Stripe(process.env.STRIPE_SECRET! as string)
 
-export class AdminService {
+export class AdminService implements IAdminService {
+
+    private adminRepository: IAdminRepository
+    private freelancerRepository: IFreelancerRepository
+
+    constructor(
+        adminRepository: IAdminRepository,
+        freelancerRepository: IFreelancerRepository
+    ) {
+        this.adminRepository = adminRepository
+        this.freelancerRepository = freelancerRepository
+    }
+
     verifyAdmin = async (email: string, password: string): Promise<{ adminInfo: string } | void | any> => {
         try {
             if (email !== adminEmail) {
@@ -35,9 +50,9 @@ export class AdminService {
         }
     }
 
-    getUsersListService = async () => {
+    getUsersListService = async (page:any,limit: any) => {
         try {
-            const users = await UserRepository.getUsers()
+            const users = await this.adminRepository.getUsers(page,limit)
             if (!users) {
                 throw new Error('No data have found')
             }
@@ -52,16 +67,15 @@ export class AdminService {
             //         createdAt: created_At.toISOString().slice(0, 10)
             //     }
             // })
-            // console.log('appo ntho issue here')
             return users
         } catch (error: any) {
             throw new Error(error.message)
         }
     }
 
-    getFreelancerApplicaitonService = async () => {
+    getFreelancerApplicaitonService = async (page: any, limit: any) => {
         try {
-            const freelancer = await FreelancerRepository.getFreelancerApplications()
+            const freelancer = await this.adminRepository.getFreelancerApplications(page, limit)
             if (!freelancer) {
                 throw new Error('No data have been found')
             } else {
@@ -74,8 +88,7 @@ export class AdminService {
 
     updateFreelancerService = async (applicationId: string, status: string) => {
         try {
-            const updateData = await FreelancerRepository.updateStatus(applicationId, status)
-            console.log(updateData)
+            const updateData = await this.adminRepository.updateStatus(applicationId, status)
             if (!updateData) {
                 throw new Error('status updation failed')
             } else {
@@ -88,7 +101,7 @@ export class AdminService {
 
     blockFreelancerService = async (email: string, isBlocked: boolean) => {
         try {
-            const blockData = await UserRepository.blockFreelancer(email, isBlocked)
+            const blockData = await this.adminRepository.blockFreelancer(email, isBlocked)
             if (blockData) {
                 return true
             } else {
@@ -101,7 +114,7 @@ export class AdminService {
 
     blockUserService = async (email: string, isBlocked: boolean) => {
         try {
-            const blockData = await UserRepository.blockUser(email, isBlocked)
+            const blockData = await this.adminRepository.blockUser(email, isBlocked)
             if (blockData) {
                 return true
             } else {
@@ -115,7 +128,7 @@ export class AdminService {
     createCategoryService = async (name: string, description: string) => {
         try {
 
-            const createCategory = await AdminRepository.createCatregory(name, description)
+            const createCategory = await this.adminRepository.createCatregory(name, description)
             if (createCategory) {
                 return true
             } else {
@@ -128,10 +141,26 @@ export class AdminService {
 
     getCategoryService = async () => {
         try {
-            const categories = await AdminRepository.getCategories()
+            const categories = await this.adminRepository.getCategories()
             return categories
         } catch (error: any) {
             throw new Error(error.message)
+        }
+    }
+
+    removeCategoryService = async (name: string) => {
+        try {
+            const data = await this.adminRepository.removeCategory(name)
+            return data
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            } else {
+                throw new AppError('FailedToRemoveCategory',
+                    500,
+                    error.message || 'Unexpected Error'
+                )
+            }
         }
     }
 
@@ -143,7 +172,7 @@ export class AdminService {
             } else if (status == "unblock") {
                 newStatus = false
             }
-            const blockData = await AdminRepository.blockUnblockCategory(name, newStatus)
+            const blockData = await this.adminRepository.blockUnblockCategory(name, newStatus)
             if (blockData) {
                 return true
             } else {
@@ -156,7 +185,7 @@ export class AdminService {
 
     getFreelancerService = async (id: string) => {
         try {
-            const freelancerData = await FreelancerRepository.getFreelancerDetail(id)
+            const freelancerData = await this.freelancerRepository.getFreelancerDetail(id)
             if (!freelancerData) {
                 throw new Error('no data have been found')
             } else {
@@ -174,9 +203,10 @@ export class AdminService {
         }
     }
 
-    getFreelancersService = async () => {
+    getFreelancersService = async (page: any, limit: any) => {
         try {
-            const data = await AdminRepository.getFreelancers()
+
+            const data = await this.adminRepository.getFreelancers(page,limit)
             if (!data) {
                 throw new Error('No data have been found')
             }
@@ -186,12 +216,50 @@ export class AdminService {
         }
     }
 
+    getJobsService = async()=>{
+        try {
+            const jobData = await this.adminRepository.getJobs()
+            if(!jobData){
+                throw AppError.notFound('no data have been found')
+            }
+            return jobData
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            } else {
+                throw new AppError('FailedToFetchJobData',
+                    500,
+                    error.message || 'Unexpected Error'
+                )
+            }
+        }
+    }
+
     jobActivateService = async (id: string) => {
         try {
-            const updatedData = await AdminRepository.activateJob(id)
+            const updatedData = await this.adminRepository.activateJob(id)
             return updatedData
         } catch (error: any) {
             throw new Error(error.message)
+        }
+    }
+
+    getContractService = async()=>{
+        try {
+            const contracts = await this.adminRepository.getContractRepo()
+            if(!contracts){
+                throw AppError.notFound('No contract have been found')
+            } 
+            return contracts   
+        } catch (error:any) {
+            if (error instanceof AppError) {
+                throw error
+            } else {
+                throw new AppError('FailedToGetContract',
+                    500,
+                    error.message || 'Unexpected Error'
+                )
+            }
         }
     }
 
@@ -202,12 +270,10 @@ export class AdminService {
                 category: data.category,
                 description: data.description,
             }
-            const skill = await AdminRepository.createSkills(skillData)
+            const skill = await this.adminRepository.createSkills(skillData)
             if (skill) {
-                console.log('its herere')
                 return true
             } else {
-                console.log('here is the error')
                 throw AppError.badRequest('Failed to add Skill')
             }
         } catch (error: any) {
@@ -215,6 +281,21 @@ export class AdminService {
                 throw error
             }
             throw new AppError('PaymentConfirmationFailed',
+                500,
+                error.message || 'Unexpected Error'
+            )
+        }
+    }
+
+    getSkillsService = async(page: any, limit: any)=>{
+        try {
+            const data = await this.adminRepository.getSkills(page, limit)
+            return data
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('FailedToFEtchSkills',
                 500,
                 error.message || 'Unexpected Error'
             )
@@ -229,7 +310,7 @@ export class AdminService {
             } else if (status == "unblock") {
                 newStatus = false
             }
-            const data = await AdminRepository.blockUnblockSkills(id, newStatus)
+            const data = await this.adminRepository.blockUnblockSkills(id, newStatus)
             return data
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -244,7 +325,7 @@ export class AdminService {
 
     getTransactionService = async () => {
         try {
-            const contracts: any = await AdminRepository.getContratRepo()
+            const contracts: any = await this.adminRepository.getContractRepo()
             const transactions = []
             if (!contracts) {
                 throw AppError.notFound('No contract have been found')
@@ -315,8 +396,8 @@ export class AdminService {
 
     getDashboardDataService = async () => {
         try {
-            const contractData = await AdminRepository.getContratRepo()
-            const jobData: any = await AdminRepository.getJobs()
+            const contractData = await this.adminRepository.getContractRepo()
+            const jobData: any = await this.adminRepository.getJobs()
 
             const recentContracts = contractData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -367,8 +448,7 @@ export class AdminService {
                         throw AppError.notFound('Invalid timeframe');    
             }
 
-            const data: any = await AdminRepository.getGraphDataFromDB(startDate, endDate, timeframe)
-            console.log(data,'this this this this this this this this this thsi thsi')
+            const data: any = await this.adminRepository.getGraphDataFromDB(startDate, endDate, timeframe)
 
             const getMonthName = (month: number) => {
                 const months = [
@@ -377,7 +457,7 @@ export class AdminService {
                 ];
                 return months[month - 1];
             };
-    
+
             const formatGraphData = (data: any[], timeframe: string) => {
                 return data.map(item => ({
                     label: timeframe === 'MONTHLY' ? getMonthName(item.label) : item.label,
@@ -385,10 +465,9 @@ export class AdminService {
                 }));
             };
 
-              console.log(data)
             return formatGraphData (data, timeframe)
 
-            
+
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
@@ -401,6 +480,6 @@ export class AdminService {
         }
     }
 
-    
+
 
 }

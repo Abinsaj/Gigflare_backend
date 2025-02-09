@@ -1,11 +1,7 @@
 import mongoose,{Schema, ObjectId, model, Document} from "mongoose";
+import { ISkill } from "../Interfaces/common.interface";
 
-interface ISkill extends Document {
-    name: string;
-    category: ObjectId;
-    description: string;
-    isBlocked: boolean;
-} 
+
 
 const skillSchema = new Schema<ISkill>({
     name: {

@@ -1,4 +1,4 @@
-import express, { Application } from 'express';
+import express, { Application, Request, Response } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -12,6 +12,8 @@ import chatRouter from './Routes/chatRoutes';
 import freelancerRouter from './Routes/freelancerRoutes';
 import bodyParser = require('body-parser');
 import session = require('express-session');
+import { errorLogStream } from './Config/loggerConfig';
+import HTTP_statusCode from './Enums/httpStatusCode';
 
 dotenv.config();
 const PORT = process.env.PORT;
@@ -22,6 +24,13 @@ const app: Application = express();
 
 
 const server = createServer(app);
+
+app.use(
+  morgan('combined',{
+    stream: errorLogStream,
+    skip: (req: Request, res: Response) => res.statusCode < HTTP_statusCode.BadRequest,
+  })
+)
 
 export const io = new Server(server, {
   cors: {
@@ -44,7 +53,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(bodyParser.json())
+app.use(bodyParser.json())
 
 app.use('/', userRouter);
 app.use('/admin', adminRouter);
@@ -66,7 +75,7 @@ io.on('connect', (socket) => {
   if(userId != undefined)userSocketMap[userId]= socket.id
   console.log(userSocketMap,'this is the socket id we store in the socket map')
 
-  io.emit('getOnlineUsers',Object.keys(userSocketMap))
+  // io.emit('getOnlineUsers',Object.keys(userSocketMap))
 
   socket.on('message', (data) => {
     console.log('Message received:', data);

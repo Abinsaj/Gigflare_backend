@@ -3,9 +3,10 @@ import HTTP_statusCode from "../Enums/httpStatusCode";
 import { AdminService } from "../Services/adminServices";
 import { AdminRepository } from "../Repository/adminRepository";
 import AppError from "../utils/AppError";
+import IAdminService from "../Interfaces/AdminInterface/admin.service.interface";
 
 export class AdminController{
-    private adminService: AdminService;
+    private adminService: IAdminService;
     constructor(adminService: AdminService){
         this.adminService = adminService
     }
@@ -40,7 +41,8 @@ export class AdminController{
     getUsers = async(req: Request, res: Response) =>{
         try {
             console.log('dhe ivide')
-            const users = await this.adminService.getUsersListService()
+            const {page,limit} = req.query
+            const users = await this.adminService.getUsersListService(page,limit)
             res.status(HTTP_statusCode.OK).json(users)
         } catch (error: any) {
             res.status(HTTP_statusCode.BadRequest).json(error.message)
@@ -49,7 +51,8 @@ export class AdminController{
 
     getFreelancerApplication = async(req: Request, res: Response) => {
         try {
-            const data = await this.adminService.getFreelancerApplicaitonService()
+            const { page, limit } = req.query
+            const data = await this.adminService.getFreelancerApplicaitonService(page,limit)
             if(!data){
                 res.status(HTTP_statusCode.BadRequest).json('No data in the database')
             }else{
@@ -64,7 +67,6 @@ export class AdminController{
         try {
             const {freelancerId} = req.params
             const data = await this.adminService.getFreelancerService(freelancerId)
-            console.log(data,'this is the data we need to send to frontend')
             res.status(HTTP_statusCode.OK).json({freelancerData: data.freelancerData,profileImg:data.image,certImage:data.certificateImg})
         } catch (error:any) {
             res.status(HTTP_statusCode.InternalServerError).json(error.message || 'An unexpected error has occured')
@@ -76,7 +78,6 @@ export class AdminController{
             const {applicationId }= req.params
             const {status} = req.body
             const updatedData = await this.adminService.updateFreelancerService(applicationId, status);
-            console.log(updatedData,'this is the updated data we got')
             if (status === 'accepted') {
                 
                 res.status(HTTP_statusCode.OK).json({
@@ -143,7 +144,6 @@ export class AdminController{
 
     getCategories = async(req: Request,res: Response)=>{
         try {
-            console.log('category get herer')
             const data = await this.adminService.getCategoryService()
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, message:'Data fetched successfully',data})
@@ -169,8 +169,7 @@ export class AdminController{
     deleteCategory = async(req: Request,res: Response)=>{
         try {
             const {name} = req.params
-            const result = await AdminRepository.removeCategory(name)
-            console.log(result,'result we got after deleting the category')
+            const result = await this.adminService.removeCategoryService(name)
             res.status(HTTP_statusCode.OK).json({success: true,message: 'category deleted successfully'})
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json({success:false,message: 'Failed to delete the category'})
@@ -179,7 +178,8 @@ export class AdminController{
 
     getFreelancers = async(req:Request,res:Response)=>{
         try {
-            const data = await this.adminService.getFreelancersService()
+            const {page,limit} = req.query
+            const data = await this.adminService.getFreelancersService(page,limit)
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error:any) {
             res.status(HTTP_statusCode.BadRequest).json(error.message)
@@ -188,8 +188,7 @@ export class AdminController{
 
     getJobList = async(req: Request, res: Response)=>{
         try {
-            const data = await AdminRepository.getJobs()
-            console.log(data,' this is the data we got')
+            const data = await this.adminService.getJobsService()
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json('An unexpected error has occured')
@@ -199,9 +198,7 @@ export class AdminController{
     activateJob = async(req: Request, res: Response)=>{
         try {
             const {id} = req.body
-            console.log(id,'we got the id')
             const data = await this.adminService.jobActivateService(id)
-            console.log(data, ' this is the data')
             res.status(HTTP_statusCode.OK).json({success: true,data: data})
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json('An unexpected error has occured')
@@ -210,7 +207,7 @@ export class AdminController{
 
     getContracts = async(req: Request, res: Response)=>{
         try {
-            const data = await AdminRepository.getContratRepo()
+            const data = await this.adminService.getContractService()
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }
@@ -231,9 +228,7 @@ export class AdminController{
 
     createSkills = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'this is the data in the body')
             const {data} = req.body
-            console.log(data)
             const result = await this.adminService.createSkillService(data) 
             if(result ==  true){
                 res.status(HTTP_statusCode.OK).json({success: true, message: 'skill created successfully'})
@@ -258,7 +253,7 @@ export class AdminController{
     getSkills = async(req: Request, res: Response)=>{
         try {
             const { page, limit } = req.query
-            const skillData = await AdminRepository.getSkills(page,limit)
+            const skillData = await this.adminService.getSkillsService(page,limit)
             res.status(HTTP_statusCode.OK).json({ success: true, skillData})
             
         } catch (error: any) {
@@ -280,7 +275,6 @@ export class AdminController{
         try {
             const {id, status} = req.body
             const data = await this.adminService.blockUnblockSkillService(id,status)
-            console.log(data,'skill Data')
             if(data.isBlocked == true){
                 res.status(HTTP_statusCode.OK).json({success: true, message:'skill blocked'})
             }else{
@@ -304,7 +298,6 @@ export class AdminController{
 
     getAllTransactions = async(req: Request, res: Response)=>{
         try {
-            console.log('its here in the transactionn controller')
             const data = await this.adminService.getTransactionService()
             if(data.length > 0){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
@@ -327,7 +320,6 @@ export class AdminController{
     getDashboardData = async(req: Request, res: Response)=>{
         try {
             const data = await this.adminService.getDashboardDataService()
-            console.log(data,'this is the data we need to show in the dashboard')
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }
@@ -348,10 +340,8 @@ export class AdminController{
 
     getGraphData = async(req: Request, res: Response)=>{
         try {
-            console.log(req.params,'its hererer')
             const {timeframe} = req.params
             const data = await this.adminService.getGraphDataService(timeframe)
-            console.log(data,'this is the graph data ')
             res.status(HTTP_statusCode.OK).json({success: true, data})
         } catch (error: any) {
             if (error instanceof AppError) {

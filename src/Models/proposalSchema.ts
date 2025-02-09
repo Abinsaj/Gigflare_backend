@@ -1,19 +1,6 @@
 import mongoose, { Schema, Document, ObjectId, model, mongo } from "mongoose";
+import { IProposal } from "../Interfaces/common.interface";
 
-
-
-
-export interface IProposal extends Document{
-    jobId: ObjectId,
-    userId: ObjectId,
-    freelancerId: ObjectId,
-    coverLetter: String;
-    timeLine: String;
-    status: 'submitted' | 'approved' | 'rejected';
-    totalBudget: number;
-    createdAt: Date;
-    updatedAt: Date;
-}
 
 const proposalSchema = new Schema<IProposal>({
     jobId: {

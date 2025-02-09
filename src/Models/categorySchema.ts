@@ -1,10 +1,7 @@
 import mongoose,{ model, Document, Schema } from "mongoose";
+import { ICategory } from "../Interfaces/common.interface";
 
-export interface ICategory extends Document{
-    name: string,
-    description: string,
-    isBlocked: boolean
-}
+
 
 const categorySchema = new Schema<ICategory>({
     name:{

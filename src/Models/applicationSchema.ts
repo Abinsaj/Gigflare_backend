@@ -1,49 +1,6 @@
 import mongoose, { model, Document, Schema, ObjectId } from "mongoose";
+import { IFreelancer } from "../Interfaces/common.interface";
 
-interface IEducation {
-    collageName: string;
-    title: string;
-    year: number;
-}
-
-interface ICertification {
-    name: string;
-    year: number;
-}
-
-interface IExperience {
-    categoryId: mongoose.Schema.Types.ObjectId,
-    expertise: string;
-    fromYear: number;
-    toYear: number;
-}
-
-interface IFileMetadata {
-    fileurl: string;
-}
-
-export interface IFreelancer extends Document {
-    userId: ObjectId;
-    applicationId: string;
-    firstName: string;
-    lastName: string;
-    photo?: IFileMetadata;
-    description: string;
-    language: string[];
-    experience: IExperience;
-    skills: ObjectId[];
-    education?: IEducation[];
-    certification?: ICertification[];
-    certficatImage?: string[]
-    portfolio?: string;
-    email: string;
-    phone?: string;
-    status: 'pending' | 'accepted' | 'rejected';
-}
-
-const fileMetadataSchema = new Schema<IFileMetadata>({
-    fileurl: String,
-});
 
 const freelancerSchema = new Schema<IFreelancer>({
     userId: {
@@ -62,7 +19,9 @@ const freelancerSchema = new Schema<IFreelancer>({
         type: String,
         required: true
     },
-    photo: fileMetadataSchema,
+    photo: {
+        fileurl: String
+    },
     description: {
         type: String,
         required: true,

@@ -1,11 +1,6 @@
 import mongoose, {Schema, model, Document} from "mongoose";
+import { IReview } from "../Interfaces/common.interface";
 
-export interface IReview extends Document{
-    clientId: mongoose.Types.ObjectId;
-    freelancerId: mongoose.Types.ObjectId;
-    rating?: number;
-    review?: string;
-}
 
 const reviewSchema = new Schema<IReview>({
     clientId:{

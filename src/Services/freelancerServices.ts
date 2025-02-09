@@ -1,9 +1,9 @@
 import { AwsConfig } from "../Config/awsFileConfig"
 import { v4 as uuidv4 } from "uuid";
 import { FreelancerRepository } from "../Repository/freelancerRepository";
-import { ObjectId } from "mongoose";
+import { AnyArray, ObjectId } from "mongoose";
 import AppError from "../utils/AppError";
-import ContractSchema, { IContract } from "../Models/contractSchema";
+import { IContract } from "../Interfaces/common.interface";
 import * as crypto from 'crypto'
 import generateKeyPair from "../utils/GenerateKeyPair";
 import signWithPrivateKey from "../utils/Signature";
@@ -12,13 +12,26 @@ import NotificationModel from "../Models/notificationSchema";
 import { getRecieverSocketId, io } from "../server";
 import { AdminRepository } from "../Repository/adminRepository";
 import SkillSchema from "../Models/skillSchema";
+import  IFreelancerService  from "../Interfaces/FreelancerInterface/freelancer.service.interface";
+import { IFreelancerRepository } from "../Interfaces/FreelancerInterface/freelancer.repository.interface";
+import IUserRepository from "../Interfaces/UserInterface/user.repository.interface";
 
 
 require('dotenv').config();
 
-export class FreelancerService {
+export class FreelancerService implements IFreelancerService {
 
     private awsConfig = new AwsConfig()
+    private freelancerRepository: IFreelancerRepository
+    private userRepository: IUserRepository
+
+    constructor(
+        freelancerRepository: IFreelancerRepository,
+        userRepository: IUserRepository
+    ){
+        this.freelancerRepository = freelancerRepository
+        this.userRepository = userRepository
+    }
 
 
     freelancerApplicationService = async (files: any, data: any, userId: string): Promise<void> => {
@@ -41,19 +54,14 @@ export class FreelancerService {
                         certificate
                     );
                     certficateUrl.push(certficate)
-                    console.log(certficate, 'this is the certification url')
                 }
             }
-            console.log(data.skills)
             let skill = []
             for(let val of data.skills){
                 let skills: any = await SkillSchema.findOne({name: val})
                 skill.push(skills._id)
             }
-            console.log(skill,'these are the skill id')
-            console.log(data, 'this is the data we got in freelancer serivce')
-            const category = await FreelancerRepository.getSingleCategory(data.experience.expertise)
-            console.log(category, 'this is the category we find')
+            const category = await this.freelancerRepository.getSingleCategory(data.experience.expertise)
             const experience = {
                 categoryId: category!._id,
                 expertise: data.experience.expertise,
@@ -76,11 +84,10 @@ export class FreelancerService {
                 ...data
             };
 
-            const freelancerData = await FreelancerRepository.saveApplication(appData as any)
+            const freelancerData = await this.freelancerRepository.saveApplication(appData as any)
             if (!freelancerData) {
                 throw AppError.conflict('Failed to save freelancer application');
             }
-            console.log(freelancerData);
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
@@ -91,9 +98,7 @@ export class FreelancerService {
 
     updateProfileService = async(id: string, data: any  )=>{
         try {
-            console.log('yeah its here')
             const bucketName =  process.env.BUCKET_NAME
-            console.log(data.photo,'this is the data photo of the freelancer to update')
             
             if (data.photo) {
                 let photoUrl = await this.awsConfig.uploadFile(
@@ -113,7 +118,7 @@ export class FreelancerService {
 
             data.skills = skills
 
-            const freelancerData = await FreelancerRepository.updateFreelancerProfile(id, data)
+            const freelancerData = await this.freelancerRepository.updateFreelancerProfile(id, data)
             if(!freelancerData){
                 throw AppError.conflict('Profile updation failed')
             }
@@ -128,7 +133,7 @@ export class FreelancerService {
 
     getSingleDetailService = async (id: string) => {
         try {
-            const data = await FreelancerRepository.getFreelancerDetail(id)
+            const data = await this.freelancerRepository.getFreelancerDetail(id)
             if (!data) {
                 throw AppError.notFound('No data have been found')
             }
@@ -156,7 +161,6 @@ export class FreelancerService {
                 email: data!.email,
                 phone: data!.phone
             }
-            console.log(freelancerData, 'this is the freelancer data to be send')
             return freelancerData
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -166,15 +170,28 @@ export class FreelancerService {
         }
     }
 
+    getJobsService = async(id: string)=>{
+        try {
+            const data = await this.freelancerRepository.getJobs(id)
+            if(!data){
+                throw AppError.notFound('No data have been found')
+            }
+            return data
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError('DetailRetrievalError', 500, error.message || 'Failed to retrieve job details')
+        }
+    }
+
     createProposalService = async (data: any, userId: string, jobId: string, freelancerId: string) => {
         try {
-            const jobData = await FreelancerRepository.getSingleJobData(jobId)
+            const jobData = await this.freelancerRepository.getSingleJobData(jobId)
             if (jobData) {
-                const proposals: any = await FreelancerRepository.getProposals(freelancerId)
-                console.log(proposals,'this is proposal')
+                const proposals: any = await this.freelancerRepository.getProposals(freelancerId)
                 const isProposalExist = proposals.some((proposal: any) =>
                     jobData.proposals?.includes(proposal._id))
-                console.log(isProposalExist)
                 if (!isProposalExist) {
                     if (jobData.status == 'open') {
                         const proposalData = {
@@ -185,7 +202,7 @@ export class FreelancerService {
                             timeLine: data.timeLine,
                             totalBudget: parseFloat(data.totalBudget) || 0
                         }
-                        const createProposal = await FreelancerRepository.createJobProposal(proposalData)
+                        const createProposal = await this.freelancerRepository.createJobProposal(proposalData)
 
                         const proposalId = createProposal._id as ObjectId
                         jobData.proposals?.push(freelancerId as unknown as ObjectId)
@@ -227,7 +244,7 @@ export class FreelancerService {
 
     getProposalsService = async (id: string) => {
         try {
-            const proposals = await FreelancerRepository.getProposals(id)
+            const proposals = await this.freelancerRepository.getProposals(id)
             return proposals
         } catch (error: any) {
             console.log(error)
@@ -235,10 +252,25 @@ export class FreelancerService {
         }
     }
 
+    getJobOfferDataService = async(id: string)=>{
+        try {
+            const job = await this.freelancerRepository.getJobOfferData(id)
+            if(!job){
+                throw AppError.notFound('No data have been found')
+            }
+            return job
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('Application Error', 500, error.message || 'An error occured ');
+        }
+    }
+
     acceptOfferService = async (data: any) => {
         try {
             if (data.termsAccepted == true) {
-                const offer = await FreelancerRepository.changeOfferStatus(data)
+                const offer = await this.freelancerRepository.changeOfferStatus(data)
                 if (offer) {
                     if (offer.status == 'accepted') {
                         const contract = {
@@ -258,7 +290,7 @@ export class FreelancerService {
                             
                         }
                         let job_id: any = offer.jobId
-                        const job = await FreelancerRepository.getSingleJobData(job_id)
+                        const job = await this.freelancerRepository.getSingleJobData(job_id)
 
                         if (job) {
                             job.status = 'closed';
@@ -274,14 +306,20 @@ export class FreelancerService {
                         .digest('hex')
 
 
-                        const newContract = new ContractSchema({
+                        // const newContract = new ContractSchema({
+                        //     ...contract,
+                        //     contractHash
+                        // });
+                        const datas = {
                             ...contract,
                             contractHash
-                        });
+                        }
+
+                        const newContract = await this.freelancerRepository.createContract(datas)
 
                         
 
-                        await newContract.save();
+                        // await newContract.save();
     
                         return newContract;
                     }
@@ -302,8 +340,7 @@ export class FreelancerService {
 
     getContractService = async(id: string)=>{
         try {
-            console.log(id,'this is the id we got herer')
-            const contract = await FreelancerRepository.getContracts(id)
+            const contract = await this.freelancerRepository.getContracts(id)
             if(!contract){
                 throw AppError.notFound('No data have been found with the user')
             }else{
@@ -322,9 +359,7 @@ export class FreelancerService {
 
     signContractService = async(hash: string, contractId: ObjectId, freelancerId: ObjectId)=>{
         try {
-            console.log(contractId,'this is the contract id')
-            const contract: any = await FreelancerRepository.getContractDetails(freelancerId, contractId)
-            console.log(contract,'this is the contract we got here')
+            const contract: any = await this.freelancerRepository.getContractDetails(freelancerId, contractId)
             if(!contract){
                 throw AppError.notFound('No contract have been foud with this freelancer')
             }
@@ -336,10 +371,8 @@ export class FreelancerService {
             }
 
             const { publicKey, privateKey} = generateKeyPair()
-            console.log(publicKey,privateKey,'these are the keys')
 
             const signature = signWithPrivateKey(hash, privateKey)
-            console.log(signature,'this is the signature')
             
             contract.signedByFreelancer = {
                 signed: true,
@@ -369,17 +402,15 @@ export class FreelancerService {
 
     changeStatusService = async (id: any, status: "submitted" | 'termination_requested') => {
         try {
-            const contract = await UserRepository.getSingleContract(id);
+            const contract = await this.userRepository.getSingleContract(id);
             if (!contract) {
                 throw AppError.notFound('Contract not found');
             }
-            console.log('its here , the issue is something else')
             if (contract.status === 'completed' || contract.status === 'terminated') {
                 throw AppError.conflict('Cannot change the status');
             }
     
             if (contract.status !== status) {
-                console.log(status,'this is status')
                 contract.status = status;
                 await contract.save();
                 return contract;
@@ -400,16 +431,42 @@ export class FreelancerService {
 
     deleteProposalService = async(id: string)=>{
         try {
-            const proposal = await FreelancerRepository.deleteProposal(id)
+            const proposal = await this.freelancerRepository.deleteProposal(id)
             return proposal
-        } catch (error) {
-            
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError(
+                'FailedToDeleteProposal',
+                500,
+                error.message || 'An unexpected error occurred'
+            );
+        }
+    }
+
+    getFreelancerNotificationService = async(id: string)=>{
+        try {
+            const notification = await this.freelancerRepository.getFreelancerNotification(id)
+            if(!notification){
+                throw AppError.notFound('No notification have been found')
+            }
+            return notification
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError(
+                'FailedToGetNotification',
+                500,
+                error.message || 'An unexpected error occurred'
+            );
         }
     }
 
     getWorkHistoryService = async(id: string)=>{
         try {
-            const workHistroy = await FreelancerRepository.getWorkHistory(id)
+            const workHistroy = await this.freelancerRepository.getWorkHistory(id)
             
             return workHistroy
         } catch (error: any) {
@@ -420,10 +477,42 @@ export class FreelancerService {
             );
         }
     }
+
+    getSkillsService = async(id: string)=>{
+        try {
+            const data = await this.freelancerRepository.getSkills(id)
+            if(!data){
+                throw AppError.notFound('No data have been found')
+            }
+            return data
+        } catch (error: any) {
+            throw new AppError(
+                'Failed getting Skills',
+                500,
+                error.message || 'An unexpected error occurred'
+            );
+        }
+    }
+
+    getFilteredJobService = async(filter: any)=>{
+        try {
+            const data = await this.freelancerRepository.getFilteredJob(filter)
+            if(!data){
+                throw AppError.notFound('Data not found')
+            }
+            return data
+        } catch (error: any) {
+            throw new AppError(
+                'Failed to get filtered data',
+                500,
+                error.message || 'An unexpected error occurred'
+            );
+        }
+    }
     
     getDashboardDataService = async(id: string)=>{
         try {
-            const contracts = await FreelancerRepository.getContracts(id)
+            const contracts = await this.freelancerRepository.getContracts(id)
             if(!contracts){
                 throw AppError.notFound('No contract have been found for this freelancer')
             }
@@ -432,8 +521,8 @@ export class FreelancerService {
             const earnings = projects.reduce((sum,contract)=> sum + contract.totalEarnings, 0)
             const activeContract = contracts.filter((contract)=> contract.status == 'active' || contract.status == 'submitted' || contract.status == 'initial_payment').length
             
-            const recentProjects = await FreelancerRepository.getRecentContracts(id )
-            const ratingReview = await FreelancerRepository.getReviewRating(id)
+            const recentProjects = await this.freelancerRepository.getRecentContracts(id )
+            const ratingReview = await this.freelancerRepository.getReviewRating(id)
 
             return {
                 earnings,
@@ -454,6 +543,26 @@ export class FreelancerService {
                 );
             }
 
+        }
+    }
+
+    getReviews = async(id: string)=>{
+        try {
+            const review = await this.freelancerRepository.getReviewRating(id)
+            if(!review){
+                throw AppError.notFound('No data have been found')
+            }
+            return review
+        } catch (error: any) {
+            if(error instanceof AppError){
+                throw error
+            }else{
+                throw new AppError(
+                    'Failed get rating and review',
+                    500,
+                    error.message || 'An unexpected error occurred'
+                );
+            }
         }
     }
 

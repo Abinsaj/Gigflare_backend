@@ -1,30 +1,7 @@
 import mongoose,{Schema, model, Document} from "mongoose";
-
-export interface address{
-    address: string
-    country:  string
-    state: string
-    city: string
-    pincode: string
-}
+import { IUser } from "../Interfaces/common.interface";
 
 
-export interface IUser extends Document{
-    userId:string,
-    name:string,
-    email:string,
-    phone:string,
-    password:string,
-    created_At:Date,
-    isFreelancer?:boolean,
-    isBlocked:boolean,
-    freelancerCredentials?:{
-        email?:String,
-        uniqueID?:String,
-    },
-    profile?:string
-    address?:address[]
-}
 
 const userSchema = new Schema<IUser>({
     userId:{
@@ -47,7 +24,7 @@ const userSchema = new Schema<IUser>({
         type:String,
         required:true
     },
-    created_At:{
+    createdAt:{
         type:Date,
     },
     isFreelancer:{

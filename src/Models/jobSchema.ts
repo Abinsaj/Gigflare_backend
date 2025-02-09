@@ -1,26 +1,6 @@
 import mongoose, { Schema, model, Document, ObjectId, Mongoose, mongo } from "mongoose";
+import  IJob  from "../Interfaces/common.interface";
 
-export interface IJob extends Document{
-    title: string,
-    description: string
-    skillsRequired: ObjectId[]
-    budget?: number
-    category: ObjectId
-    duration: string
-    projectType: string;
-    status: 'open' | 'closed' | 'completed'
-    isBlocked: Boolean
-    createdBy: ObjectId
-    created_At: Date
-    proposals?:ObjectId[],
-    invitesSent?:ObjectId[],
-    hiredFreelancer?:{
-        freelancerId: ObjectId
-        hiredDate: Date
-        contractId: ObjectId
-    },
-    isActive: boolean,
-}
 
 const jobSchema = new Schema<IJob>({
     title:{

@@ -1,0 +1,7 @@
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250127-0000-01-error.log
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250130-0010-01-error.log
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250131-0015-01-error.log
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250201-0003-01-error.log
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250207-0005-01-error.log
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250208-0015-01-error.log
+/Users/abinsaj/Desktop/GIGFLARE/backend/src/logs/20250209-0009-01-error.log

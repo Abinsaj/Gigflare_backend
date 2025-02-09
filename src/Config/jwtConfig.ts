@@ -6,11 +6,11 @@ dotenv.config();
 
 const secret_key = process.env.JWT_SECRET_KEY as string;
 
-const createToken = (user_id: string, role: string, isBlocked?: boolean): string => {
+const createToken = (user_id: any, role: string, isBlocked?: boolean): string => {
     return jwt.sign({ user_id, role }, secret_key, { expiresIn: '10m' });
 }
 
-const createRefreshToken = (user_id: string, role: string, isBlocked?: boolean): string => {
+const createRefreshToken = (user_id: any, role: string, isBlocked?: boolean): string => {
     return jwt.sign({ user_id, role }, secret_key, { expiresIn: "7d" });
 }
 

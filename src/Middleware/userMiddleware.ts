@@ -18,10 +18,12 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
                     await handleRefreshToken(req, res, next)
                 } else {
                     const { user_id, role, isBlocked } = decoded as jwt.JwtPayload
+                    // req.user = decoded as {user_id:string ;role:string}
                     if (role !== "user") {
                         res.status(HTTP_statusCode.Unauthorized).json({ message: 'Accesss Denied, Insufficient token payloads' })
                     } else {
-                        const userData = await userModel.findOne({userId:user_id})
+                        console.log(user_id,'this is the user id')
+                        const userData = await userModel.findOne({_id:user_id})
                         if(userData?.isBlocked == true){
                             res.status(HTTP_statusCode.NoAccess).json({ message: 'Access Denied, You are blocked' })
                         }else{
@@ -52,7 +54,8 @@ const handleRefreshToken = async (req: Request, res: Response, next: NextFunctio
                     } else if (role !== 'user') {
                         res.status(HTTP_statusCode.Unauthorized).json({ message: 'Accesss Denied, Insufficient refresh payloads' })
                     } else {
-                        const userData = await userModel.findOne({ userId: user_id })
+                        const userData = await userModel.findOne({ _id: user_id })
+                        console.log(user_id,'this is the user id in the middleware')
                         if (userData?.isBlocked == true) {
                             res.status(HTTP_statusCode.NoAccess).json({ message: 'Accesss Denied, You are blocked' })
                         } else {

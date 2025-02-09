@@ -8,9 +8,12 @@ import axios, { HttpStatusCode } from "axios";
 import AppError from "../utils/AppError";
 import { AdminRepository } from "../Repository/adminRepository";
 import { ObjectId } from "mongoose";
+import IUserService from "../Interfaces/UserInterface/user.service.interface";
+
+const Google_URI = process.env.GOOGLE_API_URL
 
 export class UserController {
-    private userService: UserService;
+    private userService: IUserService;
     constructor(userService: UserService) {
         this.userService = userService;
     }
@@ -47,10 +50,8 @@ export class UserController {
 
     verifyLogin = async (req: Request, res: Response): Promise<any> => {
         try {
-            console.log(req.body,' this the request bidy')
             const data = req.body
             const result = await this.userService.login(data.email, data.password);
-            console.log(result,'this is the result we got herer in login controller')
             if (!result) {
                 return res.status(HTTP_statusCode.Unauthorized).json({success:false, message: "Invalid login credentials" })
             }
@@ -189,11 +190,9 @@ export class UserController {
 
     getFreelancerInfo = async(req:Request, res: Response)=>{
         try {
-            console.log(req.query,'yeah we reached here')
             const {id, page, limit} = req.query;
-            const freelancerData: any = await this.userService.getFreelancerInfoService(id,page, limit)
-            console.log(freelancerData,'Freelancer Data')
-            console.log(freelancerData,' this is the data we got from the repository')
+
+            const freelancerData: any = await this.userService.getFreelancerInfoService(id, page, limit)
             res.status(HTTP_statusCode.OK).json(freelancerData)
         } catch (error: any) {
             res.status(HTTP_statusCode.InternalServerError).json(error.message)
@@ -220,8 +219,7 @@ export class UserController {
     googleSignIn = async(req: Request, res: Response)=>{
         try {
             const {tokenResponse} = req.body
-            console.log(tokenResponse,'this is the access token we get here')
-            const result = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{
+            const result = await axios.get(`${Google_URI}`,{headers:{
                 'Authorization':`Bearer ${tokenResponse.access_token}`
             }})
             const name = result.data.given_name +''+result.data.family_name
@@ -236,8 +234,8 @@ export class UserController {
 
     getSigleJob = async(req: Request, res: Response)=>{
         try {
-            const {id} = req.params
-            const result = await UserRepository.getUserJob(id)
+            const {id, page , limit} = req.query
+            const result = await this.userService.getUserJobService(id, page, limit)
             res.status(HTTP_statusCode.OK).json(result)
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json(error)
@@ -246,7 +244,7 @@ export class UserController {
 
     getCategoryList = async(req: Request, res: Response)=>{
         try {
-            const data = await UserRepository.getCategories()
+            const data = await this.userService.getCategoryService()
             res.status(HTTP_statusCode.OK).json(data)
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json(error)
@@ -255,11 +253,8 @@ export class UserController {
 
     getProposals = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'its here in the controller')
             const {id} = req.params
-            console.log(id)
             const data = await this.userService.getProposalServices(id)
-            console.log(data)
             res.status(HTTP_statusCode.OK).json({success: true,data:data})
         } catch (error) {
             res.status(HTTP_statusCode.InternalServerError).json({success: false, message: 'An enexpected error has occured'})
@@ -270,7 +265,6 @@ export class UserController {
         try {
             const {id} = req.params
             const {status} = req.body
-            console.log(id,'..........',status,'afhoahgoqehgoqg')
             const data = await this.userService.approveProposalService(id, status)
             if(data?.status === 'approved'){
                 res.status(HTTP_statusCode.OK).json({success: true, message: 'Proposal approved'})
@@ -318,6 +312,7 @@ export class UserController {
             platformFeeAmount,
             attachmentPath: attachment,
         };
+        console.log(offerData,'this is the offer data in the controller')
             const data = await this.userService.sendJobOfferService(offerData, freelancerId as string, jobId as string ,userId as string )
             if(data == true){
                 res.status(HTTP_statusCode.OK).json({success: true, message:'offer has been sent to the user'})
@@ -333,6 +328,7 @@ export class UserController {
         try {
             const {id} = req.params
             const result = await this.userService.getContractService(id)
+            console.log(result,'this is the contract of the user ')
             res.status(HTTP_statusCode.OK).json(result)
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -373,7 +369,6 @@ export class UserController {
 
     createCheckoutSession = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'this is the body')
             const {data} = req.body
             const result = await this.userService.createCheckoutSessionService(data.id, data.initialPayment, data.remainingPayment)
             if(result){
@@ -425,8 +420,7 @@ export class UserController {
     getUserNotification = async(req: Request, res: Response)=>{
         try {
             const {id} = req.params;
-            const data = await UserRepository.getNotification(id)
-            console.log(data, 'we got the notification data')
+            const data = await this.userService.getNotificationService(id)
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }else{
@@ -449,11 +443,10 @@ export class UserController {
 
     viewedNotification = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'this is the body things')
             const {id} = req.params
             const {type} = req.body
             
-            const data = await UserRepository.changeNotificationStaus(id, type)
+            const data = await this.userService.changeNotificationStatusService(id, type)
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }else{
@@ -476,9 +469,8 @@ export class UserController {
 
     viewedMessageNotification = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,'its herererererererererereeerererer')
             const {userId, otherId} = req.body
-            const data = await UserRepository.messageNotificationChange(userId, otherId) 
+            const data = await this.userService.viewMessageNotificationService(userId, otherId) 
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})
             }else{
@@ -551,7 +543,7 @@ export class UserController {
     getRatingAndReview = async(req: Request, res: Response)=>{
         try {
             const {id} = req.params
-            const data = await UserRepository.getReviews(id)
+            const data = await this.userService.getReviewsService(id)
             res.status(HTTP_statusCode.OK).json({success: true, data})
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -594,7 +586,7 @@ export class UserController {
 
     getSkills = async(req: Request, res: Response)=>{
         try {
-            const data = await UserRepository.getSkills()
+            const data = await this.userService.getSkillService()
             res.status(HTTP_statusCode.OK).json({success: true, data})
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -615,7 +607,7 @@ export class UserController {
         try {
             const {id} = req.params
             const contractId: any = id
-            const data = await UserRepository.getSingleContract(contractId)
+            const data = await this.userService.getSingleContractService(contractId)
             res.status(HTTP_statusCode.OK).json({ success: true, data})
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -634,10 +626,8 @@ export class UserController {
 
     updatePriofile = async(req: Request, res: Response)=>{
         try {
-            console.log(req.body,' this is the req body')
             const {name, phone} = req.body.data
             const id = req.body.id
-            console.log(id,'this si hte id')
             const data = await this.userService.updateProfileService(name, phone, id)
             if(data){
                 res.status(HTTP_statusCode.OK).json({success: true, data})

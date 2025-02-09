@@ -1,10 +1,10 @@
-import { IUser } from "../Interfaces/common.interface"
+import IJob, { IAddress, ICleanedUser, IFreelancer, IUser } from "../Interfaces/common.interface"
 import { UserRepository } from "../Repository/userRepository"
 import bcrypt from 'bcrypt'
 import { v4 as uuidv4 } from "uuid"
 import sendOTPMail from "../Config/emailConfig"
 import { createRefreshToken, createToken } from "../Config/jwtConfig"
-import { address } from "../Models/userSchema"
+import address from "../Models/userSchema"
 import { AwsConfig } from "../Config/awsFileConfig"
 import AppError from "../utils/AppError"
 import { ObjectId } from "mongoose"
@@ -12,25 +12,32 @@ import generateKeyPair from "../utils/GenerateKeyPair"
 import signWithPrivateKey from "../utils/Signature"
 import Stripe from "stripe"
 import SkillSchema from "../Models/skillSchema"
+import IUserRepository from "../Interfaces/UserInterface/user.repository.interface"
+import IUserService from "../Interfaces/UserInterface/user.service.interface"
 
 require('dotenv').config()
 
 
 const aws = new AwsConfig()
 const stripe = new Stripe(process.env.STRIPE_SECRET! as string)
-console.log(stripe, 'this is the api key')
 
-export class UserService {
-    private userData: IUser | null = null
+export class UserService implements IUserService{
+    private userData: any | null = null
     private OTP: string | null = null
     private expiryOTP_time: Date | null = null
     private email: string | null = null
     private contractId: ObjectId | null = null
-    // private awsConfig = new AwsConfig()
+    private userRepository: IUserRepository
+
+    constructor(
+        userRepository: IUserRepository
+    ) {
+        this.userRepository = userRepository
+    }
 
     register = async (userData: IUser): Promise<void> => {
         try {
-            const existUser = await UserRepository.existUser(userData.email)
+            const existUser = await this.userRepository.existUser(userData.email)
             if (existUser) {
                 throw new Error('Email already in use')
             }
@@ -49,7 +56,6 @@ export class UserService {
             }
             this.userData = tempData
             const generateOtp: string = Math.floor(100000 + Math.random() * 900000).toString()
-            console.log(generateOtp)
             this.OTP = generateOtp
             const isMailSend = await sendOTPMail(userData.email, generateOtp)
 
@@ -78,7 +84,7 @@ export class UserService {
                 if (actualOtp !== otp) {
                     throw new Error('Wrong OTP');
                 }
-                await UserRepository.createUser(userData);
+                await this.userRepository.createUser(userData);
                 this.OTP = null;
                 this.expiryOTP_time = null;
                 this.userData = null;
@@ -91,12 +97,12 @@ export class UserService {
 
 
     login = async (email: string, password: string): Promise<{
-        userInfo: { _id: string, name: string, email: string, userId: string, isBlocked: boolean, createdAt: string, isFreelancer: boolean },
+        userInfo: ICleanedUser,
         accessToken: string,
         refreshToken: string
-    } | null> => {
+    }> => {
         try {
-            const userExist = await UserRepository.verifyLogin(email, password)
+            const userExist = await this.userRepository.verifyLogin(email, password)
             if (!userExist) {
                 throw { message: 'Invalid login credentials' }
             }
@@ -110,20 +116,20 @@ export class UserService {
                 throw { message: 'Incorrect password' }
             }
             const userInfo = {
-                _id: userExist._id,
+                _id: userExist._id?.toString(),
                 userId: userExist.userId,
                 name: userExist.name,
                 email: userExist.email,
                 // phone: userExist.phone,
                 isBlocked: userExist.isBlocked,
-                createdAt: userExist.createdAt.toISOString().slice(0, 10),
+                createdAt: userExist.createdAt!.toISOString().slice(0, 10),
                 isFreelancer: userExist.isFreelancer
             }
-            const accessToken = createToken(userExist.userId, "user");
+            const accessToken = createToken(userExist._id, "user");
 
-            const refreshToken = createRefreshToken(userExist.userId, "user");
+            const refreshToken = createRefreshToken(userExist._id, "user");
 
-            return { accessToken, refreshToken, userInfo };
+            return { userInfo, accessToken, refreshToken };
         } catch (error: any) {
             throw { message: error.message || 'Internal server error' }
         }
@@ -146,7 +152,7 @@ export class UserService {
 
     verifyEmailAndSendOTP = async (email: string) => {
         try {
-            const emailExist = await UserRepository.verifyEmail(email)
+            const emailExist = await this.userRepository.verifyEmail(email)
             if (!emailExist) {
 
                 throw new Error('Email is not valid')
@@ -154,7 +160,6 @@ export class UserService {
             } else {
 
                 const generateOtp: string = Math.floor(100000 + Math.random() * 900000).toString()
-                console.log(generateOtp)
                 this.OTP = generateOtp
                 const isMailSend = await sendOTPMail(email, generateOtp)
                 if (!isMailSend) {
@@ -210,7 +215,7 @@ export class UserService {
             }
 
             const hashPassword = await bcrypt.hash(password, 10)
-            const user = await UserRepository.changePassword(hashPassword, email)
+            const user = await this.userRepository.changePassword(hashPassword, email)
 
             if (!user) {
                 throw { statusCode: 404, message: ' User not found ' }
@@ -221,20 +226,19 @@ export class UserService {
         }
     }
 
-    createJobService = async (data: any, id: string) => {
+    createJobService = async (data: IJob, id: string) => {
         try {
-            const user = await UserRepository.getUserInfo(id)
-            console.log(user, 'this is the user details')
+            const user = await this.userRepository.getUserInfo(id)
 
             let skills = []
-            for (let val of data.skills) {
-                let skill = await SkillSchema.findOne({ name: val })
+            for (let val of data.skillsRequired) {
+                let skill = await SkillSchema.findOne({ name: val }) /////////////////////////////////////////////////////////
                 skills.push(skill?._id)
             }
 
             const jobInfo = {
-                title: data.jobTitle,
-                description: data.jobDescription,
+                title: data.title,
+                description: data.description,
                 skillsRequired: skills,
                 budget: data.budget,
                 category: data.category,
@@ -243,8 +247,7 @@ export class UserService {
                 createdBy: user?._id,
 
             }
-            const create = await UserRepository.createJob(jobInfo)
-            console.log(create, 'this is the created job we got in the service')
+            const create = await this.userRepository.createJob(jobInfo)
             if (create) {
                 return { bool: true, data: create }
             } else {
@@ -255,7 +258,7 @@ export class UserService {
         }
     }
 
-    addAddressService = async (data: address, id: string) => {
+    addAddressService = async (data: IAddress, id: string) => {
         try {
             const addressInfo = {
                 address: data.address,
@@ -264,7 +267,7 @@ export class UserService {
                 city: data.city,
                 pincode: data.pincode
             }
-            const createData = await UserRepository.addAddress(addressInfo, id)
+            const createData = await this.userRepository.addAddress(addressInfo, id)
             return true
         } catch (error: any) {
             throw new Error(error.message)
@@ -273,7 +276,7 @@ export class UserService {
 
     getUserService = async (id: string) => {
         try {
-            const data = await UserRepository.getUserInfo(id)
+            const data = await this.userRepository.getUserInfo(id)
             if (!data) {
                 throw new Error('No data have found')
             }
@@ -283,77 +286,121 @@ export class UserService {
         }
     }
 
-    getFreelancerInfoService = async (userId?: any , page?: any, limit?: any) => {
+    // getFreelancerInfoService = async (userId?: any , page?: any, limit?: any) => {
+    //     try {
+    //         let result: any = []
+    //         if(userId && page && limit){
+    //              result = await this.userRepository.getFreelancerDetails(userId, page, limit)
+    //              let image = ''
+    //              let freelancerData = []
+    //              for (let data of result.data) {
+    //                  image = (await aws.getFile('freelancerApplication/photo', data.photo?.fileurl))
+    //                  const updatedData = {
+    //                      _id: data._id,
+    //                      userId: data.userId,
+    //                      applicationId: data.applicationId,
+    //                      firstName: data.firstName,
+    //                      lastName: data.lastName,
+    //                      profile: image,
+    //                      description: data.description,
+    //                      language: data.language,
+    //                      experience: data.experience,
+    //                      skills: data.skills,
+    //                      education: data.education,
+    //                      certification: data.certification,
+    //                      portfolio: data.portfolio,
+    //                      email: data.email,
+    //                      phone: data.phone,
+    //                      createdAt: data.createdAt
+    //                  }
+    //                  freelancerData.push(updatedData)
+    //              }
+
+    //              return { freelancerData, totalPage:result.totalPages }
+    //         }else{
+    //             result = await this.userRepository.getFreelancersList(userId)
+    //             let image = ''
+    //              let freelancerData = []
+    //              for (let data of result) {
+    //                  image = (await aws.getFile('freelancerApplication/photo', data.photo?.fileurl))
+    //                  const updatedData = {
+    //                      _id: data._id,
+    //                      userId: data.userId,
+    //                      applicationId: data.applicationId,
+    //                      firstName: data.firstName,
+    //                      lastName: data.lastName,
+    //                      profile: image,
+    //                      description: data.description,
+    //                      language: data.language,
+    //                      experience: data.experience,
+    //                      skills: data.skills,
+    //                      education: data.education,
+    //                      certification: data.certification,
+    //                      portfolio: data.portfolio,
+    //                      email: data.email,
+    //                      phone: data.phone,
+    //                      createdAt: data.createdAt
+    //                  }
+    //                  freelancerData.push(updatedData)
+    //              }
+
+    //              return {freelancerData}
+    //         }
+    //     } catch (error: any) {
+    //         throw new Error(error.message)
+    //     }
+    // }
+
+    getFreelancerInfoService = async (userId?: string, page?: number, limit?: number): Promise<{ freelancerData: any[]; totalPage: number | undefined }> => {
         try {
-            let result: any = []
-            if(userId && page && limit){
-                 result = await UserRepository.getFreelancerDetails(userId, page, limit)
-                 let image = ''
-                 let freelancerData = []
-                 for (let data of result.data) {
-                     image = (await aws.getFile('freelancerApplication/photo', data.photo?.fileurl))
-                     const updatedData = {
-                         _id: data._id,
-                         userId: data.userId,
-                         applicationId: data.applicationId,
-                         firstName: data.firstName,
-                         lastName: data.lastName,
-                         profile: image,
-                         description: data.description,
-                         language: data.language,
-                         experience: data.experience,
-                         skills: data.skills,
-                         education: data.education,
-                         certification: data.certification,
-                         portfolio: data.portfolio,
-                         email: data.email,
-                         phone: data.phone,
-                         createdAt: data.createdAt
-                     }
-                     freelancerData.push(updatedData)
-                 }
-     
-                 return { freelancerData, totalPage:result.totalPages }
-            }else{
-                result = await UserRepository.getFreelancersList(userId)
-                let image = ''
-                 let freelancerData = []
-                 for (let data of result) {
-                     image = (await aws.getFile('freelancerApplication/photo', data.photo?.fileurl))
-                     const updatedData = {
-                         _id: data._id,
-                         userId: data.userId,
-                         applicationId: data.applicationId,
-                         firstName: data.firstName,
-                         lastName: data.lastName,
-                         profile: image,
-                         description: data.description,
-                         language: data.language,
-                         experience: data.experience,
-                         skills: data.skills,
-                         education: data.education,
-                         certification: data.certification,
-                         portfolio: data.portfolio,
-                         email: data.email,
-                         phone: data.phone,
-                         createdAt: data.createdAt
-                     }
-                     freelancerData.push(updatedData)
-                 }
-     
-                 return freelancerData
+            let freelancerData = [];
+            let result: { data?: any[]; totalPages?: number } = {};
+
+            if (userId && page && limit) {
+                result = await this.userRepository.getFreelancerDetails(userId, page, limit);
+            } else if (userId) {
+                result.data = await this.userRepository.getFreelancersList(userId);
+            } else {
+                throw new Error('Invalid parameters: userId is required');
             }
+
+            for (let data of result.data || []) {
+                const image = await aws.getFile('freelancerApplication/photo', data.photo?.fileurl || '');
+                freelancerData.push({
+                    _id: data._id,
+                    userId: data.userId,
+                    applicationId: data.applicationId,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    profile: image,
+                    description: data.description,
+                    language: data.language,
+                    experience: data.experience,
+                    skills: data.skills,
+                    education: data.education,
+                    certification: data.certification,
+                    portfolio: data.portfolio,
+                    email: data.email,
+                    phone: data.phone,
+                    createdAt: data.createdAt,
+
+                });
+            }
+
+            return {
+                freelancerData,
+                totalPage: result.totalPages || undefined,
+            };
         } catch (error: any) {
-            throw new Error(error.message)
+            throw new Error(error.message || 'An unexpected error occurred');
         }
-    }
+    };
+
 
     userChangePasswordService = async (formData: any, _id: string) => {
         try {
-            console.log(_id, 'its here')
-            console.log(formData, 'this is the form data')
             // let { currentPassword, newPassword, confirmPassword } = value
-            const userData = await UserRepository.getUserInfo(_id)
+            const userData = await this.userRepository.getUserInfo(_id)
             if (!userData) {
                 throw new Error('No data Found')
             }
@@ -369,7 +416,7 @@ export class UserService {
                 throw new Error('both password should be same')
             }
             const hashPassword = await bcrypt.hash(formData.newPassword, 10)
-            const updatedData = await UserRepository.userChangePassword(hashPassword, _id)
+            const updatedData = await this.userRepository.userChangePassword(hashPassword, _id)
             return updatedData
         } catch (error: any) {
             console.log(error.message)
@@ -379,17 +426,20 @@ export class UserService {
 
     googleSignupService = async (name: string, email: string, password: string) => {
         try {
-            const existUser = await UserRepository.findByEmail(email)
+            const existUser = await this.userRepository.existUser(email)
             if (existUser) {
                 return {
                     status: 200,
                     data: false
                 }
             } else {
+                if(existUser!.isBlocked == true){
+                    throw AppError.unauthorized('User is blocked')
+                }
                 const userId = uuidv4()
                 const saltRounds: number = 10;
                 const hashPassword = await bcrypt.hash(password, saltRounds)
-                const userSave = await UserRepository.saveUser({ userId, name, email, password: hashPassword } as IUser)
+                const userSave = await this.userRepository.createUser({ userId, name, email, password: hashPassword } as IUser)
                 return {
                     status: 200,
                     data: userSave
@@ -400,12 +450,50 @@ export class UserService {
         }
     }
 
-    getProposalServices = async (id: string) => {
+    getUserJobService = async (id: any, page: any, limit: any) => {
         try {
-            const proposalData = await UserRepository.getProposals(id)
+            const jobs = await this.userRepository.getUserJob(id, page, limit)
+            if (!jobs) {
+                throw AppError.notFound('No job have been found for the user')
+            }
+            return jobs
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('FailedCreatingCheckout',
+                500,
+                error.message || 'An error has been occured'
+            )
+        }
+    }
+
+    getCategoryService = async()=>{
+        try {
+            const category = await this.userRepository.getCategories()
+            if(!category){
+                throw AppError.notFound('No data have been found')
+            }
+            return category
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('FailedFetchingCategory',
+                500,
+                error.message || 'An error has been occured'
+            )
+        }
+    }
+
+    getProposalServices = async (id: string):Promise<any> => {
+        try {
+            const proposalData = await this.userRepository.getProposals(id)
             if (proposalData) {
+                
                 const freelancerId = proposalData.map((proposal) => proposal.freelancerId)
-                const freelancers = await UserRepository.getFreelancers(freelancerId)
+                const reviews = await this.userRepository.getReviews(freelancerId)
+                const freelancers = await this.userRepository.getFreelancers(freelancerId)
                 const proposals = await Promise.all(proposalData.map(async (proposal) => {
                     const freelancer = freelancers?.find(f => f._id.toString() === proposal.freelancerId.toString())
                     let photoUrl = null;
@@ -414,7 +502,8 @@ export class UserService {
                     }
                     return {
                         ...proposal,
-                        freelancer: { ...freelancer, photo: photoUrl }
+                        freelancer: { ...freelancer, photo: photoUrl },
+                        reviews
                     }
                 }))
                 return proposals
@@ -428,27 +517,24 @@ export class UserService {
 
     approveProposalService = async (id: string, status: 'rejected' | 'approved') => {
         try {
-            const updatedData = await UserRepository.approveProposal(id, status)
+            const updatedData = await this.userRepository.approveProposal(id, status)
             return updatedData
         } catch (error) {
             console.log('an error has been occured', error)
         }
     }
-
     sendJobOfferService = async (offerData: any, freelancerId: string, jobId: string, userId: string) => {
         try {
-            console.log(offerData, 'sdfghjkl', jobId, '..............', freelancerId, '========')
-
+            console.log('its herererererererererekksadfolflad')
             if(offerData.attachmentPath){
                 let attachment = await aws.uploadFile(
                     'attachment/photo/',
                     offerData.attachmentPath
                 )
-                console.log(attachment,'hfoeqhioqhhoifofqefqefqerfgwerfbejfbqjefbqjebfqjebfjqefjqebfqjebfkqjebfkjqeb')
                 offerData.attachment = attachment
             }
 
-            const result = await UserRepository.getJobOffer(offerData, jobId, freelancerId, userId)
+            const result = await this.userRepository.getJobOffer(offerData, jobId, freelancerId, userId)
             if (result?.success == false) {
                 return false
             } else {
@@ -461,7 +547,7 @@ export class UserService {
 
     getContractService = async (id: string) => {
         try {
-            const contract = await UserRepository.getContracts(id)
+            const contract = await this.userRepository.getContracts(id)
             if (!contract) {
                 throw AppError.notFound('No data have been found with the user')
             } else {
@@ -480,7 +566,7 @@ export class UserService {
 
     signContractService = async (hash: string, contractId: ObjectId, userId: ObjectId) => {
         try {
-            const contract = await UserRepository.getContractDetails(userId, contractId)
+            const contract = await this.userRepository.getContractDetails(userId, contractId)
             if (!contract) {
                 throw AppError.notFound('No contract have been foud with this freelancer')
             }
@@ -491,9 +577,7 @@ export class UserService {
                 throw AppError.conflict('Freelancer yet have to sign the Contract')
             } else {
                 const { publicKey, privateKey } = generateKeyPair()
-                console.log(publicKey, privateKey, 'these are the keys')
                 const signature = signWithPrivateKey(hash, privateKey)
-                console.log(signature, 'this is the signature')
 
                 contract.signedByClient = {
                     signed: true,
@@ -526,8 +610,7 @@ export class UserService {
 
     createCheckoutSessionService = async (id: ObjectId, firstPayment: number, lastPayment: number) => {
         try {
-            console.log(id, firstPayment, lastPayment, 'these are the data we got in the backend')
-            const contract = await UserRepository.getSingleContract(id)
+            const contract = await this.userRepository.getSingleContract(id)
             if (!contract) {
                 throw AppError.notFound('Contract not found')
             }
@@ -560,7 +643,6 @@ export class UserService {
                     },
                 ];
             }
-            console.log(lineItems, 'LineItems to be go to the checkout')
 
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card'],
@@ -572,7 +654,6 @@ export class UserService {
                     contractId: id.toString()
                 },
             })
-            console.log(session, 'this is the session we send to frontend')
             return session
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -594,7 +675,7 @@ export class UserService {
                 throw AppError.badRequest('Contract ID not found in session metadata');
             }
 
-            const contract = await UserRepository.getSingleContract(contractId as ObjectId);
+            const contract = await this.userRepository.getSingleContract(contractId as ObjectId);
             if (!contract) {
                 throw AppError.notFound('Contract not found');
             }
@@ -620,12 +701,66 @@ export class UserService {
         }
     }
 
+    getNotificationService = async(id: string)=>{
+        try {
+            const data = await this.userRepository.getNotification(id)
+            if(!data){
+                throw AppError.notFound('No data have been found')
+            }
+            return data
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('FetchNotificationDataFailed',
+                500,
+                error.message || 'Unexpected Error'
+            )
+        }
+    }
+
+    changeNotificationStatusService = async(id: string, type: 'proposal' | 'message' | 'offer' | 'contract')=>{
+        try {
+            const notification = await this.userRepository.changeNotificationStatus(id, type)
+            if(!notification){
+                throw AppError.notFound('No data have been found')
+            }
+            return notification
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('ErrorFetchingNotification',
+                500,
+                error.message || 'Unexpected Error'
+            )
+        }
+    }
+
+    viewMessageNotificationService = async(userId: string, otherId: string)=>{
+        try {
+            const notification = await this.userRepository.messageNotificationChange(userId,otherId)
+            if(!notification){
+                throw AppError.notFound('Notification not found')
+            }
+            return notification
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new AppError('ErrorFetchingNotification',
+                500,
+                error.message || 'Unexpected Error'
+            )
+        }
+    }
+
     getWorkHistoryService = async (id: string) => {
         try {
-            const history = await UserRepository.getWorkHistory(id)
+            const history = await this.userRepository.getWorkHistory(id)
             if (history) {
                 const freelancerId = history.map((data) => data.freelancerId)
-                const freelancers = await UserRepository.getFreelancers(freelancerId)
+                const freelancers = await this.userRepository.getFreelancers(freelancerId)
                 const histories = await Promise.all(history.map(async (data) => {
                     const freelancer = freelancers?.find(f => f._id.toString() === data.freelancerId.toString())
                     let photoUrl = null;
@@ -651,13 +786,10 @@ export class UserService {
 
     addRatingAndReviewService = async (data: { rating: number, review: string, userId: string, freelancerId: string }) => {
         try {
-            console.log(data.freelancerId, 'this is the freelancer Id')
-            const contract = await UserRepository.checkContract(data.userId, data.freelancerId)
+            const contract = await this.userRepository.checkContract(data.userId, data.freelancerId)
 
-            console.log(contract, 'this is the contract')
-            if (contract.length > 0) {
-                console.log('hlooooooo')
-                let contractValid = contract.filter((val: any) => val.status !== 'draft')
+            if (contract!.length > 0) {
+                let contractValid = contract!.filter((val: any) => val.status !== 'draft')
                 if (contractValid) {
                     const ratingReview = {
                         clientId: data.userId,
@@ -665,8 +797,8 @@ export class UserService {
                         rating: data.rating,
                         review: data.review
                     }
-                    const updateRatingReview = await UserRepository.addRatingAndReview(ratingReview)
-                    const userInfo = await UserRepository.getUserInfo(data.userId)
+                    const updateRatingReview = await this.userRepository.addRatingAndReview(ratingReview)
+                    const userInfo = await this.userRepository.getUserInfo(data.userId)
                     const details = {
                         clientId: userInfo,
                         freelancerId: updateRatingReview.freelancerId,
@@ -674,7 +806,6 @@ export class UserService {
                         review: updateRatingReview.review
 
                     }
-                    console.log(details)
                     if (updateRatingReview) {
                         return details
                     }
@@ -682,7 +813,6 @@ export class UserService {
                     throw AppError.notFound('You dont have an active contract with the freelancer')
                 }
             } else {
-                console.log('hiiiiii')
                 throw AppError.notFound('You dont have a contract with the freelancer')
             }
         } catch (error: any) {
@@ -697,29 +827,37 @@ export class UserService {
         }
     }
 
+    getReviewsService = async(id: string)=>{
+        try {
+            const data = await this.userRepository.getReviews(id)
+            if(!data){
+                throw AppError.notFound("No data have been found")
+            }
+            return data
+        } catch (error) {
+            
+        }
+    }
+
     getTransactionService = async (userId: string) => {
         try {
-            const contracts: any = await UserRepository.getContracts(userId)
+            const contracts: any = await this.userRepository.getContracts(userId)
             const transactions = [];
             if(!contracts){
                 throw AppError.notFound('No contract have been found')
             }
             const allSessions = await stripe.checkout.sessions.list({ limit: 100 });
             for (const contract of contracts) {
-                console.log(contract,'this is the contracts')
                 const contractId = contract._id.toString();
 
                 const matchingSessions = allSessions.data.filter(
                     (session) => session.metadata?.contractId === contractId
                 );
-                console.log(matchingSessions, 'this is the matching session')
 
                 for (const session of matchingSessions) {
                     const paymentIntentId = session.payment_intent;
-                    console.log(paymentIntentId, 'this is the paymentIntentId')
                     if (typeof paymentIntentId === 'string') {
                         const paymentIntentResponse = await stripe.paymentIntents.retrieve(paymentIntentId);
-                        console.log(paymentIntentResponse, 'we got the payment intend response')
                         const latestChargeId: any = paymentIntentResponse.latest_charge;
 
                         let paymentMethodDetails: Stripe.Charge.PaymentMethodDetails | null = null;
@@ -770,17 +908,55 @@ export class UserService {
         }
     }
 
+    getSkillService = async()=>{
+        try {
+            const skill = await this.userRepository.getSkills()
+            if(!skill){
+                throw AppError.notFound('No data have been found')
+            }
+            return skill
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            } else {
+                throw new AppError('FailedToGetSkills ',
+                    500,
+                    error.message || 'Unexpected Error'
+                )
+            }
+        }
+    }
+
+    getSingleContractService = async(id: any)=>{
+        try {
+            const contract = await this.userRepository.getSingleContract(id)
+            if(!contract){
+                throw AppError.notFound('No data have been found')
+            }
+            return contract
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            } else {
+                throw new AppError('Failed to get contract ',
+                    500,
+                    error.message || 'Unexpected Error'
+                )
+            }
+        }
+    }
+
     updateProfileService = async (name: string, phone: string, id: string) => {
         try {
 
-            const userInfo = await UserRepository.getUserInfo(id);
+            const userInfo = await this.userRepository.getUserInfo(id);
             if (userInfo) {
 
                 userInfo.name = name;
                 userInfo.phone = phone;
-    
-            
-                const updatedUser = await UserRepository.updateUserInfo(id, userInfo); 
+
+
+                const updatedUser = await this.userRepository.updateUserInfo(id, userInfo); 
                 if (updatedUser) {
                     return updatedUser;
                 } else {

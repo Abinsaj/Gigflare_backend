@@ -46,6 +46,7 @@ const handleRefreshToken = async (req: Request, res: Response, next: NextFunctio
                     return res.status(HTTP_statusCode.Unauthorized).json({ message: "Access Denied, Refresh token not valid" });
                 } else {
                     const { user_id, role } = decode as jwt.JwtPayload;
+                    console.log(user_id,'this is the user_id in the admin page')
                     if (!user_id || !role) {
                         return res.status(HTTP_statusCode.Unauthorized).json({ message: "Access Denied, Insufficient token payloads" });
                     } else {

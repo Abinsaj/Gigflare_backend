@@ -1,12 +1,5 @@
 import mongoose, {Schema, model, Document, ObjectId} from "mongoose";
-
-export interface INotification extends Document{
-    userId: mongoose.Types.ObjectId,
-    type: 'message' | 'proposal' | 'offer' | 'contract',
-    message: string
-    data: Object,
-    isRead: boolean
-}
+import { INotification } from "../Interfaces/common.interface";
 
 const notificationShema = new Schema<INotification>({
     userId:{

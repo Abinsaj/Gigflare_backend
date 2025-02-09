@@ -2,9 +2,41 @@ import { Router } from "express";
 import { AdminController } from "../Controllers/adminControllers";
 import { AdminService } from "../Services/adminServices";
 import { verifyAdminToken } from "../Middleware/adminMiddleware";
+import { AdminRepository } from "../Repository/adminRepository";
+import userModel from "../Models/userSchema";
+import FreelancerApplication from "../Models/applicationSchema";
+import CategorySchema from "../Models/categorySchema";
+import { FreelancerRepository } from "../Repository/freelancerRepository";
+import jobModel from "../Models/jobSchema";
+import ProposalModel from "../Models/proposalSchema";
+import jobOfferModel from "../Models/jobOfferSchema";
+import ContractSchema from "../Models/contractSchema";
+import NotificationModel from "../Models/notificationSchema";
+import SkillSchema from "../Models/skillSchema";
+import ReviewSchema from "../Models/reviewSchema";
 
 const router = Router()
-const adminService  = new AdminService
+
+const adminRepository = new AdminRepository(
+    userModel,
+    FreelancerApplication,
+    CategorySchema,
+    jobModel,
+    ContractSchema,
+    SkillSchema
+)
+const freelancerRepository = new FreelancerRepository(
+    CategorySchema,
+    FreelancerApplication,
+    jobModel,
+    ProposalModel,
+    jobOfferModel,
+    ContractSchema,
+    NotificationModel,
+    SkillSchema,
+    ReviewSchema
+)
+const adminService  = new AdminService(adminRepository, freelancerRepository)
 const adminController = new AdminController(adminService);
 
 router.post('/verifyAdmin',adminController.verifyAdmin);
